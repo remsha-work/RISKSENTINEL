@@ -1,4 +1,4 @@
-ENCRYPTED_SMTP_PASS = "gAAAAABphYX1ZSI068YwYmSmtha2WgaoYve3CVTMl64AfzNLELq2sF25R_8YM5igA9D95XXBVaKUmb36mpBwYBsv3izKMftOp63xQ2AoLkgxIBSJclZQuxY="
+ENCRYPTED_SMTP_PASS = "gAAAAABphYqeHVPXv9a1pOtOIUd_vrtwtdWmUC2JVYTZ06Eejq4SeEmT7MHTWMp75F-6QdBEMDqcp20ypbst3MFkXXA2EMkEBKdGpNE_-Sh7ht4Xot74oO8="
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = "risksentinel.help@gmail.com"  # Change this to YOUR email
+SMTP_USER = "risksentinel.help@gmail.com"

@@ -2,17 +2,19 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_mysqldb import MySQL
 from flask_mail import Mail, Message
 from dotenv import load_dotenv
+from config import ENCRYPTED_SMTP_PASS, SMTP_SERVER, SMTP_PORT, SMTP_USER  # ADD THIS
+from cryptography.fernet import Fernet  # ADD THIS
 import os
 import secrets
 from datetime import datetime, timedelta
 import re
 
-load_dotenv()
+load_dotenv('.env.local')  # SPECIFY .env.local
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# MySQL Config
+# MySQL Config (keep same)
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER') 
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
@@ -20,15 +22,22 @@ app.config['MYSQL_DB'] = os.getenv('MYSQL_DATABASE')
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 mysql = MySQL(app)
 
-# 🔥 RISK SENTINEL EMAIL CONFIG
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
+# 🔥 SECURE EMAIL CONFIG WITH DECRYPTION
+key = os.getenv('SMTP_KEY').encode()
+f = Fernet(key)
+DECRYPTED_PASSWORD = f.decrypt(ENCRYPTED_SMTP_PASS.encode()).decode()
+
+app.config['MAIL_SERVER'] = SMTP_SERVER
+app.config['MAIL_PORT'] = SMTP_PORT
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'risksentinel.help@gmail.com'
-app.config['MAIL_PASSWORD'] = 'bqbkvhkltfqxuseo'
-app.config['MAIL_DEFAULT_SENDER'] = 'risksentinel.help@gmail.com'
+app.config['MAIL_USERNAME'] = SMTP_USER
+app.config['MAIL_PASSWORD'] = DECRYPTED_PASSWORD  # ✅ SECURE!
+app.config['MAIL_DEFAULT_SENDER'] = SMTP_USER
 mail = Mail(app)
+
+# REST OF YOUR CODE STAYS EXACTLY SAME...
+
 
 def send_reset_email(email, token, username):
     try:
