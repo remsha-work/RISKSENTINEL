@@ -1,33 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Risk Sentinel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="user-type" content="{{ user_type }}">
+    <meta name="company" content="{{ company_name }}">
+    <meta name="user-id" content="{{ user_id }}">
+    <!-- Your Tailwind/other CSS -->
+     <!-- In <head> or after login success -->
+<script>
+function syncFlaskSession() {
+    // Check if Flask passed session data via meta tags
+    const userType = document.querySelector('meta[name="user-type"]')?.content;
+    const companyName = document.querySelector('meta[name="company"]')?.content;
+    const userId = document.querySelector('meta[name="user-id"]')?.content;
+    
+    if (userType) {
+        const userData = { type: userType, company: companyName, id: userId };
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        localStorage.setItem('authToken', 'flask-session-active'); // Dummy token
+        console.log('✅ Synced Flask session:', userData);
+    }
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', syncFlaskSession);
+</script>
+
 </head>
-<body class="bg-gradient-to-br from-indigo-900 to-slate-900 min-h-screen p-12">
-    <div class="max-w-4xl mx-auto">
-        <div class="bg-white/10 backdrop-blur-xl rounded-3xl p-12 border border-white/20 shadow-2xl text-white text-center">
-            <h1 class="text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-8">
-                🎉 Welcome to Dashboard
-            </h1>
-            <div class="grid md:grid-cols-2 gap-8 mb-12">
-                <div class="bg-blue-500/20 p-8 rounded-2xl border border-blue-500/30">
-                    <div class="text-5xl mb-4">{{ '👥' if role == 'enterprise' else '🏢' }}</div>
-                    <h2 class="text-3xl font-bold mb-4">{{ role|upper }} PORTAL</h2>
-                    <p class="text-xl">{{ username }}</p>
-                </div>
-                <div class="bg-emerald-500/20 p-8 rounded-2xl border border-emerald-500/30">
-                    <div class="text-5xl mb-4">📊</div>
-                    <h2 class="text-3xl font-bold mb-4">ID</h2>
-                    <p class="text-4xl font-bold text-emerald-400">{{ user_id if role == 'enterprise' else vendor_id }}</p>
-                </div>
-            </div>
-            <a href="/logout" class="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-12 rounded-2xl shadow-2xl hover:shadow-3xl hover:-translate-y-1 transition-all duration-300 text-xl">
-                🚪 Logout
-            </a>
-        </div>
+<body>
+    <div id="app">
+        <!-- Dashboard content -->
+        <h1>Welcome {{ company_name }} ({{ user_type }})</h1>
     </div>
+    
+    <!-- JS sync script above -->
 </body>
 </html>
