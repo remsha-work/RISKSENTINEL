@@ -167,12 +167,14 @@
                 <select name="role" required>
                     <option value="">Select role</option>
                     <option value="Admin" {% if request.form.role == 'Admin' %}selected{% endif %}>Admin</option>
-                    <option value="Risk Analyst" {% if request.form.role == 'Risk Analyst' %}selected{% endif %}>Risk Analyst</option>
-                    <option value="Project Manager" {% if request.form.role == 'Project Manager' %}selected{% endif %}>Project Manager</option>
-                    <option value="Risk Owner" {% if request.form.role == 'Risk Owner' %}selected{% endif %}>Risk Owner</option>
-                    <option value="Compliance Officer" {% if request.form.role == 'Compliance Officer' %}selected{% endif %}>Compliance Officer</option>
+                    <option value="PM" {% if request.form.role == 'PM' %}selected{% endif %}>Project Manager</option>
+                    <option value="Analyst" {% if request.form.role == 'Analyst' %}selected{% endif %}>Risk Analyst</option>
+                    <option value="TL" {% if request.form.role == 'TL' %}selected{% endif %}>Team Lead</option>
+                    <option value="SeniorDev" {% if request.form.role == 'SeniorDev' %}selected{% endif %}>Senior Developer</option>
+                    <option value="JuniorDev" {% if request.form.role == 'JuniorDev' %}selected{% endif %}>Junior Developer</option>
                 </select>
             </div>
+
             
             <!-- EMAIL -->
             <div class="form-group">
