@@ -1,4 +1,0 @@
-ENCRYPTED_SMTP_PASS = "gAAAAABphYqeHVPXv9a1pOtOIUd_vrtwtdWmUC2JVYTZ06Eejq4SeEmT7MHTWMp75F-6QdBEMDqcp20ypbst3MFkXXA2EMkEBKdGpNE_-Sh7ht4Xot74oO8="
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = "risksentinel.help@gmail.com"
