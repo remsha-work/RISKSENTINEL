@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .env.*
 .env.local
+config.py
+debug_email.py  
+encrypt.py
+test.py
