@@ -1,22 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - {{ role|title }} Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gradient-to-br from-purple-50 via-white to-indigo-50">
-    <main class="min-h-screen lg:ml-72 pt-20 pb-20 px-8">
-        <div class="max-w-7xl mx-auto">
-            <h1 class="text-4xl lg:text-5xl font-black bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 bg-clip-text text-transparent mb-8">
-                Reports & Analytics
-            </h1>
-            <div class="bg-white/80 backdrop-blur-sm border border-purple-100 rounded-3xl p-8 shadow-2xl">
-                <p class="text-2xl text-gray-600">Advanced reporting coming soon! 📊</p>
+{% extends "base.html" %}
+{% block title %}Reports - Risk Sentinel{% endblock %}
+
+{% block content %}
+<div class="dashboard-content p-4">
+    <!-- YOUR HEADER (Copy from pm_dashboard) -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card p-5 border-0 shadow-lg rounded-4 bg-white">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-center mb-3 mb-lg-0">
+                            <div class="icon-circle me-4 p-3 shadow-sm" style="width: 70px; height: 70px; background: linear-gradient(135deg, #6b46c1, #9f7aea); border-radius: 16px;">
+                                <i class="fas fa-chart-bar text-white fs-2"></i>
+                            </div>
+                            <div>
+                                <h1 class="h3 fw-bold mb-1" style="color: #6b46c1;">Reports & Analytics</h1>
+                                <h1 class="h4 fw-bold mb-0" style="color: #6b46c1;">Dashboard</h1>
+                            </div>
+                        </div>
+                        <p class="fs-5 fw-medium text-muted mb-0">Project insights, performance metrics, risk analysis.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <a href="/pm_dashboard" class="btn btn-outline-purple w-100 py-3 fw-bold shadow-lg fs-5 h-100 d-flex align-items-center justify-content-center" style="min-height: 70px;">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-    </main>
-</body>
-</html>
+    </div>
+
+    <!-- REPORTS CHARTS (Coming Soon) -->
+    <div class="row g-4">
+        <div class="col-xl-4 col-lg-6">
+            <div class="card h-100 shadow-lg border-0">
+                <div class="card-body p-4 text-center">
+                    <i class="fas fa-chart-pie fa-3x text-purple mb-3 opacity-75"></i>
+                    <h5 class="fw-bold mb-2" style="color: #6b46c1;">Project Status</h5>
+                    <p class="text-muted mb-4">Status distribution chart</p>
+                    <div class="bg-light rounded-3 p-4">
+                        <div class="row text-center">
+                            <div class="col-6 border-end">
+                                <div class="h5 fw-bold text-success mb-1">4</div>
+                                <small class="text-muted">Active</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h5 fw-bold text-info mb-1">2</div>
+                                <small class="text-muted">Planning</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Add 5 more report cards -->
+    </div>
+</div>
+{% endblock %}

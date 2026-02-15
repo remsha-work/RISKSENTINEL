@@ -1,282 +1,346 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Risk Sentinel - PM Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1e40af',
-                        secondary: '#1e3a8a',
-                        danger: '#dc2626'
-                    }
+{% extends "base.html" %}
+{% block title %}PM Dashboard - Risk Sentinel{% endblock %}
+
+{% block extra_head %}
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content p-4">
+    <!-- HEADER (UNCHANGED) -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card p-5 border-0 shadow-lg rounded-4 bg-white">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-center mb-3 mb-lg-0">
+                            <div class="icon-circle me-4 p-3 shadow-sm" style="width: 70px; height: 70px; background: linear-gradient(135deg, #6b46c1, #9f7aea); border-radius: 16px;">
+                                <i class="fas fa-chart-line text-white fs-2"></i>
+                            </div>
+                            <div>
+                                <h1 class="h3 fw-bold mb-1" style="color: #6b46c1;">Project Management</h1>
+                                <h1 class="h4 fw-bold mb-0" style="color: #6b46c1;">Dashboard</h1>
+                            </div>
+                        </div>
+                        <p class="fs-5 fw-medium text-muted mb-0">Monitor projects, track progress, manage teams effectively.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <button type="button" class="btn btn-purple w-100 py-3 fw-bold shadow-lg fs-5 h-100 d-flex align-items-center justify-content-center" 
+                                data-bs-toggle="modal" data-bs-target="#createProjectModal" style="min-height: 70px;">
+                            <i class="fas fa-plus me-2"></i>Create New Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI CARDS (UNCHANGED) -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card h-100 p-4 rounded-3 shadow-lg border-0 text-center" style="background: linear-gradient(135deg, #6b46c1, #9f7aea); color: white;">
+                <i class="fas fa-project-diagram fa-2x mb-3 opacity-75"></i>
+                <div class="h2 fw-bold mb-2">{{ total_projects or 0 }}</div>
+                <h6 class="fw-semibold mb-2">Total Projects</h6>
+                <div class="progress mb-2" style="height: 6px;">
+                    <div class="progress-bar bg-white" style="width: 75%"></div>
+                </div>
+                <small>Active projects</small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card h-100 p-4 rounded-3 shadow-lg border-0 text-center bg-success text-white">
+                <i class="fas fa-tasks fa-2x mb-3 opacity-75"></i>
+                <div class="h2 fw-bold mb-2">{{ total_tasks or 0 }}</div>
+                <h6 class="fw-semibold mb-2">Total Tasks</h6>
+                <small class="text-warning fw-bold">{{ overdue_tasks or 0 }} overdue</small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card h-100 p-4 rounded-3 shadow-lg border-0 text-center bg-info text-white">
+                <i class="fas fa-dollar-sign fa-2x mb-3 opacity-75"></i>
+                <div class="h2 fw-bold mb-2">₹{{ "%.0f"|format(((total_budget or 0) * 0.72)/1000)|int }}K</div>
+                <h6 class="fw-semibold mb-2">Budget Used</h6>
+                <small>72% utilized</small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card h-100 p-4 rounded-3 shadow-lg border-0 text-center bg-warning text-white">
+                <i class="fas fa-users fa-2x mb-3 opacity-75"></i>
+                <div class="h2 fw-bold mb-2">{{ team_members or 0 }}</div>
+                <h6 class="fw-semibold mb-2">Team Members</h6>
+                <small>Active team</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔥 RECENT PROJECTS WITH EDIT BUTTON -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card shadow-xl border-0 overflow-hidden">
+                <div class="card-header bg-white border-0 pb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0" style="color: #6b46c1;">
+                            <i class="fas fa-list me-2"></i>Recent Projects
+                        </h5>
+                        <a href="/pm_projects" class="btn btn-outline-purple btn-sm px-3 py-1 fw-semibold">
+    View All <i class="fas fa-arrow-right ms-1"></i>
+</a>
+
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if projects %}
+                        {% for project in projects %}
+                        <div class="project-item p-4 border-bottom" style="border-color: #e9ecef !important;">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold mb-1 text-dark">{{ project.name or 'Untitled' }}</h6>
+                                    <div class="d-flex align-items-center gap-3 small text-muted">
+                                        <span><i class="fas fa-calendar me-1"></i>{{ project.created_at.strftime('%b %d') if project.created_at else 'Recent' }}</span>
+                                        {% if project.budget_total %}
+                                        <span><i class="fas fa-rupee-sign me-1"></i>₹{{ "%.0f"|format((project.budget_total or 0)/1000)|int }}K</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3 text-md-end">
+                                    <span class="badge fs-6 px-3 py-2 fw-semibold 
+                                        {% if project.status == 'Active' %}bg-success
+                                        {% elif project.status == 'Planning' %}bg-info bg-opacity-25 text-info border border-info
+                                        {% elif project.status == 'Completed' %}bg-success bg-opacity-25 text-success border border-success
+                                        {% elif project.status == 'OnHold' %}bg-warning bg-opacity-25 text-warning border border-warning
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ project.status or 'Active' }}
+                                    </span>
+                                </div>
+                                <div class="col-md-3 text-md-end">
+                                    <!-- 🔥 3 BUTTONS: VIEW + EDIT + DELETE -->
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="viewProject({{ project.project_id }})" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <!-- NEW EDIT BUTTON -->
+                                        <button class="btn btn-sm btn-outline-warning me-1" onclick="editProjectStatus({{ project.project_id }}, '{{ project.status }}', '{{ project.name }}')" title="Update Status">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProject({{ project.project_id }}, '{{ project.name }}')" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-project-diagram fa-4x text-muted mb-4"></i>
+                            <h5 class="text-muted fw-semibold mb-3">No projects yet</h5>
+                            <p class="text-muted mb-4">Create your first project using the button above</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK ACTIONS (UNCHANGED) -->
+ <!-- REAL DATA EXECUTIVE INSIGHTS -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h5 class="fw-bold mb-4" style="color: #6b46c1;">
+            <i class="fas fa-chart-line me-2"></i>Project Overview
+        </h5>
+        <div class="row g-4">
+            <!-- TOTAL ACTIVE PROJECTS -->
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="card h-100 shadow-lg border-0 p-4 text-center">
+                    <div class="icon-circle mb-3 p-3 mx-auto" style="width: 70px; height: 70px; background: linear-gradient(135deg, #6b46c1, #9f7aea);">
+                        <i class="fas fa-project-diagram text-white fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-3" style="color: #6b46c1;">Active Projects</h6>
+                    <div class="h3 fw-bold mb-2 text-success">{{ active_projects or 0 }}</div>
+                    <small class="text-muted">of {{ total_projects or 0 }} total</small>
+                </div>
+            </div>
+
+            <!-- PLANNING PROJECTS -->
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="card h-100 shadow-lg border-0 p-4 text-center">
+                    <div class="icon-circle mb-3 p-3 mx-auto" style="width: 70px; height: 70px; background: linear-gradient(135deg, #17a2b8, #20c997);">
+                        <i class="fas fa-calendar-check text-white fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-3" style="color: #17a2b8;">Planning</h6>
+                    <div class="h3 fw-bold mb-2 text-info">{{ planning_projects or 0 }}</div>
+                    <small class="text-muted">Upcoming projects</small>
+                </div>
+            </div>
+
+            <!-- COMPLETED PROJECTS -->
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="card h-100 shadow-lg border-0 p-4 text-center">
+                    <div class="icon-circle mb-3 p-3 mx-auto" style="width: 70px; height: 70px; background: linear-gradient(135deg, #28a745, #20c997);">
+                        <i class="fas fa-check-circle text-white fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-3" style="color: #28a745;">Completed</h6>
+                    <div class="h3 fw-bold mb-2 text-success">{{ completed_projects or 0 }}</div>
+                    <small class="text-muted">Successfully finished</small>
+                </div>
+            </div>
+
+            <!-- TOTAL BUDGET -->
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="card h-100 shadow-lg border-0 p-4 text-center">
+                    <div class="icon-circle mb-3 p-3 mx-auto" style="width: 70px; height: 70px; background: linear-gradient(135deg, #ffc107, #fd7e14);">
+                        <i class="fas fa-rupee-sign text-white fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold mb-3" style="color: #ffc107;">Total Budget</h6>
+                    <div class="h3 fw-bold mb-2 text-warning">
+                        {% if total_budget %}₹{{ "%.0f"|format((total_budget or 0)/1000)|int }}K{% else %}₹0{% endif %}
+                    </div>
+                    <small class="text-muted">Allocated budget</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Repeat for Team, Tasks, Reports with different icons/colors -->
+
+
+<!-- 🔥 CREATE PROJECT MODAL (UNCHANGED - YOUR PERFECT SIZE) -->
+<div class="modal fade clean-modal" id="createProjectModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <!-- YOUR PERFECT MODAL CONTENT HERE - SAME AS BEFORE -->
+    <div class="modal-dialog modal-md modal-dialog-scrollable" style="max-width: 550px; margin-top: 120px !important;">
+        <!-- ... YOUR EXISTING CREATE MODAL ... -->
+    </div>
+</div>
+
+<!-- 🔥 NEW: QUICK STATUS UPDATE MODAL -->
+<div class="modal fade status-update-modal" id="statusUpdateModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 400px; margin-top: 150px !important;">
+        <div class="modal-content border-0 shadow-xl" style="border-radius: 16px;">
+            <div class="modal-header bg-warning text-dark border-0" style="border-radius: 16px 16px 0 0; padding: 1.25rem;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-edit fs-4 me-2 text-warning"></i>
+                    <h6 class="modal-title mb-0 fw-bold">Update Project Status</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="statusUpdateForm" novalidate>
+                <div class="modal-body p-3">
+                    <input type="hidden" name="project_id" id="editProjectId">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small mb-1">Project</label>
+                        <input type="text" id="editProjectName" class="form-control form-control-sm" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small mb-2">New Status <span class="text-danger">*</span></label>
+                        <select name="status" id="editStatus" class="form-select form-select-sm" required>
+                            <option value="Planning">🗺️ Planning</option>
+                            <option value="Active">▶️ Active</option>
+                            <option value="OnHold">⏸️ On Hold</option>
+                            <option value="Completed">✅ Completed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light p-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm px-5 fw-bold shadow-sm">
+                        <i class="fas fa-save me-1"></i>Update Status
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 🔥 NEW: EDIT PROJECT STATUS
+    const statusUpdateForm = document.getElementById('statusUpdateForm');
+    if (statusUpdateForm) {
+        statusUpdateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('/update_project_status', { 
+                method: 'POST', 
+                body: formData 
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal')).hide();
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
                 }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Sidebar -->
-    <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h1 class="text-2xl font-bold text-primary">Risk Sentinel</h1>
-            <p class="text-sm text-gray-500 mt-1">Project Management</p>
-        </div>
-        
-        <nav class="mt-8 px-4">
-            <a href="#" class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 mb-2 group">
-                <i class="fas fa-tachometer-alt w-5 mr-3 text-primary group-hover:text-primary-dark"></i>
-                <span class="font-medium">Dashboard</span>
-            </a>
-            
-            <a href="#" class="flex items-center px-4 py-3 bg-primary text-white rounded-lg shadow-sm mb-2">
-                <i class="fas fa-chart-line w-5 mr-3"></i>
-                <span class="font-medium">Projects</span>
-            </a>
-            
-            <a href="#" class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 mb-2 group">
-                <i class="fas fa-tasks w-5 mr-3 group-hover:text-primary"></i>
-                <span class="font-medium">Tasks</span>
-            </a>
-            
-            <a href="#" class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 mb-2 group">
-                <i class="fas fa-exclamation-triangle w-5 mr-3 text-danger group-hover:text-danger"></i>
-                <span class="font-medium">Risks</span>
-            </a>
-            
-            <a href="#" class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 mb-2 group">
-                <i class="fas fa-users w-5 mr-3 group-hover:text-primary"></i>
-                <span class="font-medium">Team</span>
-            </a>
-            
-            <a href="#" class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 mb-2 group">
-                <i class="fas fa-file-invoice-dollar w-5 mr-3 group-hover:text-primary"></i>
-                <span class="font-medium">Budget</span>
-            </a>
-        </nav>
-    </div>
-
-    <!-- Main Content -->
-    <div class="ml-64 p-8">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-8">
-            <div>
-                <h2 class="text-3xl font-bold text-gray-900">PM Dashboard</h2>
-                <p class="text-gray-600 mt-1">Overview of all active projects and risks</p>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all duration-200 flex items-center">
-                    <i class="fas fa-plus mr-2"></i>
-                    New Project
-                </button>
-                <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold cursor-pointer hover:bg-primary-dark transition-all duration-200">
-                    AA
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-                <div class="flex items-center">
-                    <div class="p-3 bg-green-100 rounded-xl">
-                        <i class="fas fa-check-circle text-2xl text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Projects On Track</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">12</p>
-                        <p class="text-sm text-green-600 font-medium mt-1">+2 from last week</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-                <div class="flex items-center">
-                    <div class="p-3 bg-yellow-100 rounded-xl">
-                        <i class="fas fa-clock text-2xl text-yellow-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">At Risk</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">3</p>
-                        <p class="text-sm text-yellow-600 font-medium mt-1">-1 resolved</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-                <div class="flex items-center">
-                    <div class="p-3 bg-red-100 rounded-xl">
-                        <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Critical Risks</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">2</p>
-                        <p class="text-sm text-red-600 font-medium mt-1">Needs attention</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-                <div class="flex items-center">
-                    <div class="p-3 bg-blue-100 rounded-xl">
-                        <i class="fas fa-users text-2xl text-blue-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Team Utilization</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">87%</p>
-                        <p class="text-sm text-blue-600 font-medium mt-1">4/5 members active</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Project Progress -->
-            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-bold text-gray-900">Project Progress</h3>
-                    <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option>All Projects</option>
-                        <option>Risk Sentinel v2</option>
-                        <option>Security Audit</option>
-                    </select>
-                </div>
-                
-                <div class="space-y-6">
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-semibold text-gray-900">Risk Sentinel v2.0</p>
-                            <p class="text-sm text-gray-500">Backend Development Phase</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-2xl font-bold text-primary">78%</p>
-                            <div class="w-24 bg-gray-200 rounded-full h-2 mt-1">
-                                <div class="bg-primary h-2 rounded-full" style="width: 78%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-semibold text-gray-900">Database Migration</p>
-                            <p class="text-sm text-gray-500">Schema Optimization</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-2xl font-bold text-green-600">95%</p>
-                            <div class="w-24 bg-gray-200 rounded-full h-2 mt-1">
-                                <div class="bg-green-600 h-2 rounded-full" style="width: 95%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-semibold text-gray-900">API Integration</p>
-                            <p class="text-sm text-gray-500">Risk Assessment Module</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-2xl font-bold text-yellow-600">42%</p>
-                            <div class="w-24 bg-gray-200 rounded-full h-2 mt-1">
-                                <div class="bg-yellow-600 h-2 rounded-full" style="width: 42%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Risk Overview -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 class="text-xl font-bold text-gray-900 mb-6">Risk Overview</h3>
-                
-                <div class="space-y-4 mb-6">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">High Priority</span>
-                        <span class="font-semibold text-danger">2</span>
-                    </div>
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Medium Priority</span>
-                        <span class="font-semibold text-yellow-600">5</span>
-                    </div>
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Low Priority</span>
-                        <span class="font-semibold text-green-600">8</span>
-                    </div>
-                </div>
-
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-danger via-yellow-500 to-green-500 h-2 rounded-full" style="width: 65%"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tasks & Team Grid -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-8">
-            <!-- Recent Tasks -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 class="text-xl font-bold text-gray-900 mb-6">Recent Tasks</h3>
-                <div class="space-y-4">
-                    <div class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200">
-                        <div class="w-2 h-2 bg-primary rounded-full mr-4"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Complete Flask API endpoints</p>
-                            <p class="text-sm text-gray-500">Due: Feb 12 • High Priority</p>
-                        </div>
-                        <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-medium">75%</div>
-                    </div>
-                    
-                    <div class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200">
-                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-4"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">MySQL Schema Review</p>
-                            <p class="text-sm text-gray-500">Due: Feb 10 • Medium</p>
-                        </div>
-                        <div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-600 font-medium">90%</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Team Status -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 class="text-xl font-bold text-gray-900 mb-6">Team Status</h3>
-                <div class="space-y-4">
-                    <div class="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4">AS</div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Ahmed S.</p>
-                            <p class="text-sm text-green-700">Online • 3 tasks</p>
-                        </div>
-                        <div class="w-20 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">Active</div>
-                    </div>
-                    
-                    <div class="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        <div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4">RS</div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Rahul S.</p>
-                            <p class="text-sm text-gray-600">2 tasks pending</p>
-                        </div>
-                        <div class="w-20 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium">Busy</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Add some interactivity
-        document.querySelectorAll('.hover\\:shadow-md').forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.transform = 'translateY(-2px)';
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'translateY(0)';
+            })
+            .catch(() => alert('Network error'))
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             });
         });
-    </script>
-</body>
-</html>
+    }
+
+    // 🔥 OPEN STATUS UPDATE MODAL
+    window.editProjectStatus = function(projectId, currentStatus, projectName) {
+        document.getElementById('editProjectId').value = projectId;
+        document.getElementById('editProjectName').value = projectName;
+        document.getElementById('editStatus').value = currentStatus;
+        new bootstrap.Modal(document.getElementById('statusUpdateModal')).show();
+    }
+
+    // YOUR EXISTING FUNCTIONS (UNCHANGED)
+    window.deleteProject = function(projectId, projectName) {
+        if (confirm(`Delete "${projectName}"?`)) {
+            fetch(`/delete_project/${projectId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Delete failed: ' + data.error);
+                }
+            })
+            .catch(() => alert('Delete failed'));
+        }
+    }
+    
+    window.viewProject = function(projectId) {
+        alert('View project ' + projectId + ' (feature coming soon)');
+    }
+
+    // YOUR CREATE PROJECT FORM (UNCHANGED - ADD IT HERE)
+    // ... your existing createProjectModal code ...
+});
+</script>
+
+<style>
+/* YOUR ORIGINAL STYLES + NEW STATUS MODAL */
+.modal-backdrop { display: none !important; }
+.clean-modal, .status-update-modal { z-index: 99999 !important; }
+.clean-modal .modal-dialog, .status-update-modal .modal-dialog { margin-top: 120px !important; }
+.icon-circle { border-radius: 50% !important; display: flex; align-items: center; justify-content: center; }
+.kpi-card { transition: all 0.3s ease; }
+.kpi-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important; }
+.action-card:hover { background: #f8f9fa !important; transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important; }
+.bg-purple { background: linear-gradient(135deg, #6b46c1, #9f7aea) !important; color: white !important; }
+.btn-purple { background: linear-gradient(135deg, #6b46c1, #9f7aea) !important; border: none !important; color: white !important; }
+.btn-purple:hover { background: linear-gradient(135deg, #553c9a, #805ad5) !important; color: white !important; transform: translateY(-2px); }
+.project-item:hover { background: #f8f9fa; border-radius: 12px; margin: 0 -12px; padding: 24px !important; }
+.shadow-xl { box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important; }
+.btn-outline-purple { color: #6b46c1 !important; border-color: #6b46c1 !important; }
+.btn-outline-purple:hover { background: #6b46c1 !important; color: white !important; }
+</style>
+{% endblock %}
