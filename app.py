@@ -6,7 +6,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
-from datetime import datetime
+from datetime import datetime, date
+from dateutil import parser  # Add this import for date parsing
 
 load_dotenv('.env.local')
 
@@ -55,29 +56,25 @@ def get_role_data(role):
         
         if role == 'pm':
             user_id = session.get('user_id')
-            enterprise_id = session.get('enterprise_id') or None  # 🔥 FIXED
             
             # Total Projects
-            cur.execute("SELECT COUNT(*) as total FROM projects WHERE pm_user_id = %s OR enterprise_id = %s", 
-                       (user_id, enterprise_id))
+            cur.execute("SELECT COUNT(*) as total FROM projects WHERE pm_user_id = %s", (user_id,))
             context['total_projects'] = cur.fetchone()['total'] or 0
             
             # Recent Projects
             cur.execute("""
                 SELECT project_id, name, status, budget_total, budget_spent, 
                        charter_status, start_date, end_date, created_at
-                FROM projects 
-                WHERE pm_user_id = %s OR enterprise_id = %s
-                ORDER BY created_at DESC LIMIT 5
-            """, (user_id, enterprise_id))
+                FROM projects WHERE pm_user_id = %s ORDER BY created_at DESC LIMIT 5
+            """, (user_id,))
             context['projects'] = cur.fetchall()
             
             # Team Members
             cur.execute("""
                 SELECT COUNT(DISTINCT t.assigned_to) as team_count 
                 FROM tasks t JOIN projects p ON t.project_id = p.project_id
-                WHERE p.pm_user_id = %s OR p.enterprise_id = %s
-            """, (user_id, enterprise_id))
+                WHERE p.pm_user_id = %s
+            """, (user_id,))
             context['team_members'] = cur.fetchone()['team_count'] or 1
 
         cur.execute("SELECT status, COUNT(*) as count FROM risks GROUP BY status")
@@ -89,30 +86,35 @@ def get_role_data(role):
         print(f"get_role_data error: {e}")
         return {'username': session.get('username', 'User'), 'role': role, 'total_projects': 0, 'projects': []}
 
-def send_reset_email(user_id, email, username):
-    try:
-        token = RESET_TOKEN_SER.dumps(user_id, salt='password-reset')
-        reset_url = f"http://localhost:5000/reset-password/{token}"
-        msg = MIMEMultipart()
-        msg['From'] = MAIL_USERNAME
-        msg['To'] = email
-        msg['Subject'] = "Risk Sentinel - Password Reset"
-        body = f"Hi {username},\n\nClick here to reset: {reset_url}\n\nExpires in 1 hour."
-        msg.attach(MIMEText(body, 'plain'))
-        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
-        if MAIL_USE_TLS: server.starttls()
-        if MAIL_USERNAME and MAIL_PASSWORD: server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        return True
-    except:
-        return False
+# 🔥 NEW HELPER FUNCTION
+def calculate_task_stats(tasks):
+    total_tasks = len(tasks)
+    completed_tasks = len([t for t in tasks if t['status'] == 'Completed'])
+    pending_tasks = len([t for t in tasks if t['status'] in ['NotStarted', 'InProgress', 'Testing']])
+    
+    # Add formatted dates and overdue status
+    today = date.today()
+    for task in tasks:
+        if task['due_date']:
+            try:
+                due_date = parser.parse(task['due_date']).date()
+                task['due_date_formatted'] = due_date.strftime('%b %d, %Y')
+                task['is_overdue'] = due_date < today and task['status'] != 'Completed'
+            except:
+                task['due_date_formatted'] = 'Invalid date'
+                task['is_overdue'] = False
+        else:
+            task['due_date_formatted'] = 'No date'
+            task['is_overdue'] = False
+    
+    return total_tasks, completed_tasks, pending_tasks
 
 # ===== ROUTES =====
 @app.route('/')
 def landing():
     return render_template('landing.html')
 
+# AUTH ROUTES (UNCHANGED - WORKING)
 @app.route('/enterprise-login', methods=['GET', 'POST'])
 def enterprise_login():
     if 'user_id' in session: 
@@ -189,9 +191,9 @@ def vendor_register():
             flash(f'Registration failed: {str(e)}', 'error')
     return render_template('auth/vendor_registration.html')
 
-# 🔥 PM DASHBOARD - PERFECT ✅
-@app.route('/pm_dashboard')
+# 🔥 PM DASHBOARD ROUTES (PERFECT ✅)
 @app.route('/pm-dashboard')
+@app.route('/pm_dashboard')
 def pm_dashboard():
     if 'user_id' not in session or session.get('role') != 'pm':
         flash('Access denied. PM login required.', 'error')
@@ -199,30 +201,58 @@ def pm_dashboard():
     
     user_id = session.get('user_id')
     
-    # Total projects count
     cur = mysql.connection.cursor()
     cur.execute("SELECT COUNT(*) as total FROM projects WHERE pm_user_id = %s", (user_id,))
     total_projects = cur.fetchone()['total'] or 0
     
-    # Get projects for recent list
     cur.execute("""
         SELECT project_id, name, status, budget_total, budget_spent, 
                charter_status, start_date, end_date, created_at
-        FROM projects 
-        WHERE pm_user_id = %s
-        ORDER BY created_at DESC LIMIT 5
+        FROM projects WHERE pm_user_id = %s ORDER BY created_at DESC LIMIT 5
     """, (user_id,))
     projects = cur.fetchall()
-    
     cur.close()
     
     return render_template('dashboards/pm_dashboard.html', 
-                         projects=projects,
-                         total_projects=total_projects,
-                         total_tasks=0, overdue_tasks=0, 
-                         total_budget=0, team_members=1)
+                         projects=projects, total_projects=total_projects,
+                         total_tasks=0, overdue_tasks=0, total_budget=0, team_members=1)
 
-# 🔥 CREATE PROJECT ROUTE - PERFECT ✅
+# 🔥 PM TASKS ROUTE (FIXED ✅)
+@app.route('/pm_tasks')
+def pm_tasks():
+    if 'user_id' not in session or session.get('role') != 'pm':
+        flash('Access denied. PM login required.', 'error')
+        return redirect('/enterprise-login')
+    
+    user_id = session['user_id']
+    cur = mysql.connection.cursor()
+    
+    # Get PM's projects
+    cur.execute("SELECT project_id, name FROM projects WHERE pm_user_id = %s", (user_id,))
+    projects = cur.fetchall()
+    
+    # Get tasks for PM's projects + JOIN with users
+    cur.execute("""
+        SELECT t.*, p.name as project_name, u.username as assigned_to_name
+        FROM tasks t 
+        JOIN projects p ON t.project_id = p.project_id
+        LEFT JOIN users u ON t.assigned_to = u.user_id
+        WHERE p.pm_user_id = %s
+        ORDER BY t.due_date ASC, t.created_at DESC
+    """, (user_id,))
+    tasks = cur.fetchall()
+    
+    # Calculate stats with formatted dates
+    total_tasks, completed_tasks, pending_tasks = calculate_task_stats(tasks)
+    
+    cur.close()
+    return render_template('dashboards/universal_tasks.html', 
+                         tasks=tasks, projects=projects,
+                         total_tasks=total_tasks, 
+                         completed_tasks=completed_tasks,
+                         pending_tasks=pending_tasks)
+
+# 🔥 PROJECT CRUD ROUTES (PERFECT ✅)
 @app.route('/create_project', methods=['POST'])
 def create_project():
     if 'user_id' not in session:
@@ -232,10 +262,8 @@ def create_project():
         cur = mysql.connection.cursor()
         project_name = request.form['project_name']
         status = request.form.get('status', 'Planning')
-        # In create_project route - update these lines:
-        budget_total = float(request.form.get('budget_total', 0) or 0) * 100000  # Lakh to Rupees
-        budget_spent = float(request.form.get('budget_spent', 0) or 0) * 100000   # Lakh to Rupees
-
+        budget_total = float(request.form.get('budget_total', 0) or 0) * 100000
+        budget_spent = float(request.form.get('budget_spent', 0) or 0) * 100000
         start_date = request.form.get('start_date') or None
         end_date = request.form.get('end_date') or None
         charter_status = request.form.get('charter_status', 'Draft')
@@ -262,7 +290,6 @@ def create_project():
 def update_project_status():
     cursor = None
     try:
-        # Get form data
         project_id = request.form.get('project_id')
         new_status = request.form.get('status')
         
@@ -271,13 +298,10 @@ def update_project_status():
         if not project_id or not new_status:
             return jsonify({'success': False, 'error': 'Missing project ID or status'})
         
-        # ✅ NO updated_at column - JUST UPDATE STATUS
         cursor = mysql.connection.cursor()
         cursor.execute("""
-            UPDATE projects 
-            SET status = %s
-            WHERE project_id = %s
-        """, (new_status, project_id))
+            UPDATE projects SET status = %s WHERE project_id = %s AND pm_user_id = %s
+        """, (new_status, project_id, session['user_id']))
         
         mysql.connection.commit()
         print(f"DEBUG: Rows affected: {cursor.rowcount}")
@@ -287,7 +311,7 @@ def update_project_status():
             return jsonify({'success': True, 'message': f'Status updated to {new_status}'})
         else:
             cursor.close()
-            return jsonify({'success': False, 'error': 'Project not found'})
+            return jsonify({'success': False, 'error': 'Project not found or unauthorized'})
             
     except Exception as e:
         print(f"ERROR: {str(e)}")
@@ -297,8 +321,6 @@ def update_project_status():
             mysql.connection.rollback()
         return jsonify({'success': False, 'error': f'Database error: {str(e)}'})
 
-
-
 @app.route('/delete_project/<int:project_id>', methods=['DELETE'])
 def delete_project(project_id):
     if 'user_id' not in session:
@@ -306,14 +328,12 @@ def delete_project(project_id):
     
     try:
         cur = mysql.connection.cursor()
-        # Check if PM owns this project
         cur.execute("SELECT pm_user_id FROM projects WHERE project_id = %s", (project_id,))
         project = cur.fetchone()
         
         if not project or project['pm_user_id'] != session['user_id']:
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
         
-        # Delete project
         cur.execute("DELETE FROM projects WHERE project_id = %s AND pm_user_id = %s", (project_id, session['user_id']))
         mysql.connection.commit()
         cur.close()
@@ -325,45 +345,20 @@ def delete_project(project_id):
             cur.close()
         return jsonify({'success': False, 'error': str(e)}), 400
 
+# 🔥 PLACEHOLDER ROUTES
 @app.route('/pm_projects')
 def pm_projects():
-    pm_id = session.get('pm_id') or session.get('user_id')
-    cursor = mysql.connection.cursor()
-    cursor.execute("""
-        SELECT p.*, e.name as enterprise_name 
-        FROM projects p 
-        LEFT JOIN enterprises e ON p.enterprise_id = e.enterprise_id 
-        WHERE p.pm_user_id = %s OR p.pm_id = %s 
-        ORDER BY p.created_at DESC
-    """, (pm_id, pm_id))
-    projects = cursor.fetchall()
-    cursor.close()
-    return render_template('dashboard/pm_projects.html', projects=projects)
+    return render_template('dashboards/pm_projects.html')  # Create this later
 
 @app.route('/pm_team')
 def pm_team():
-    pm_id = session.get('pm_id') or session.get('user_id')
-    cursor = mysql.connection.cursor()
-    cursor.execute("""
-        SELECT DISTINCT t.team_lead_id, u.name, u.email 
-        FROM projects p 
-        JOIN team_leads t ON p.team_lead_id = t.team_lead_id 
-        JOIN users u ON t.user_id = u.user_id 
-        WHERE p.pm_user_id = %s OR p.pm_id = %s
-    """, (pm_id, pm_id))
-    team = cursor.fetchall()
-    cursor.close()
-    return render_template('dashboard/pm_team.html', team=team)
-
-@app.route('/pm_tasks')
-def pm_tasks():
-    return render_template('dashboard/universal_tasks.html')
+    return render_template('dashboards/pm_team.html')  # Create this later
 
 @app.route('/pm_reports')
 def pm_reports():
-    return render_template('dashboard/universal_reports.html')
+    return render_template('dashboards/pm_reports.html')  # Create this later
 
-
+# AUTH & UTILITY ROUTES (UNCHANGED)
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
@@ -378,6 +373,25 @@ def forgot_password():
             return redirect('/enterprise-login')
         flash('Email not found!', 'error')
     return render_template('auth/forgot_password.html')
+
+def send_reset_email(user_id, email, username):
+    try:
+        token = RESET_TOKEN_SER.dumps(user_id, salt='password-reset')
+        reset_url = f"http://localhost:5000/reset-password/{token}"
+        msg = MIMEMultipart()
+        msg['From'] = MAIL_USERNAME
+        msg['To'] = email
+        msg['Subject'] = "Risk Sentinel - Password Reset"
+        body = f"Hi {username},\n\nClick here to reset: {reset_url}\n\nExpires in 1 hour."
+        msg.attach(MIMEText(body, 'plain'))
+        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
+        if MAIL_USE_TLS: server.starttls()
+        if MAIL_USERNAME and MAIL_PASSWORD: server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except:
+        return False
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -419,7 +433,6 @@ def universal_dashboard(role):
     elif '/reports' in full_path: context['active_tab'] = 'reports'
     elif '/chat' in full_path: context['active_tab'] = 'chat'
     
-    # 🔥 FIXED: Correct template paths
     template = f"dashboards/pm_dashboard.html" if role == 'pm' else f"dashboards/{ROLE_DASHBOARDS.get(role, 'pm_dashboard.html')}"
     
     try:
