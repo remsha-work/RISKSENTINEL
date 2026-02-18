@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM Dashboard - Risk Sentinel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --purple: #667eea; --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08); --radius: 10px;
+        }
+        * { font-family: 'Inter', sans-serif; font-weight: 500; }
+        body { 
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
+            min-height: 100vh; overflow-x: hidden; 
+        }
+        
+        /* FIXED HEIGHTS - NO SCROLL */
+        .content-wrapper { padding-top: 70px; padding-bottom: 1rem; max-height: 100vh; overflow: hidden; }
+        .main-content { height: calc(100vh - 70px); overflow-y: auto; padding: 1.5rem 0; }
+        
+        /* ULTRA-COMPACT NAVBAR */
+        .navbar-custom { 
+            background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); 
+            box-shadow: var(--shadow); padding: 0.5rem 0; height: 70px;
+        }
+        .navbar-brand-custom {
+            font-size: 1.2rem; font-weight: 700; background: linear-gradient(135deg, var(--purple), #764ba2);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .nav-link-custom { 
+            color: #64748b !important; font-size: 0.85rem; padding: 0.5rem 1rem !important; 
+            border-radius: 8px; transition: all 0.2s ease; white-space: nowrap; font-weight: 600;
+        }
+        .nav-link-custom:hover, .nav-link-custom.active { 
+            color: white !important; background: linear-gradient(135deg, var(--purple), #764ba2); 
+        }
+
+        /* PERFECTLY ALIGNED KPI CARDS - FIXED HEIGHT */
+        .metric-card {
+            background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.05); height: 140px; padding: 1rem;
+            transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .metric-card.green { border-top: 4px solid var(--success); }
+        .metric-card.red { border-top: 4px solid var(--danger); }
+        .metric-card.yellow { border-top: 4px solid var(--warning); }
+        .metric-card.blue { border-top: 4px solid var(--purple); }
+        
+        .metric-value { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+        .metric-label { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-icon { font-size: 1.75rem; opacity: 0.8; }
+
+        /* FIXED HEIGHT CHARTS - NO LAG */
+        .chart-container { height: 200px !important; position: relative; }
+        
+        /* COMPACT PROJECT LIST */
+        .project-item {
+            padding: 0.875rem 0; border-bottom: 1px solid #f8fafc; display: flex; 
+            justify-content: space-between; align-items: center; transition: all 0.2s ease;
+        }
+        .project-item:hover { background: rgba(102,126,234,0.03); padding-left: 0.5rem; border-radius: 6px; }
+        .project-progress-bar { height: 4px; border-radius: 2px; background: #f1f5f9; overflow: hidden; }
+        
+        /* PERFECT RESPONSIVE GRID */
+        @media (max-width: 992px) {
+            .main-content { padding: 1rem 0; }
+            .metric-value { font-size: 1.5rem; }
+            .metric-card { height: 120px; padding: 0.75rem; }
+        }
+        @media (max-width: 768px) {
+            .content-wrapper { padding-top: 65px; }
+            .navbar-custom { padding: 0.4rem 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ULTRA-COMPACT NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container-fluid px-3 px-lg-4">
+            <button class="navbar-toggler d-lg-none me-2 p-1" onclick="toggleSidebar()">
+                <i class="fas fa-bars fs-5 text-purple"></i>
+            </button>
+            <a class="navbar-brand navbar-brand-custom me-3" href="/pm/dashboard">
+                <i class="fas fa-shield-alt me-1"></i>Risk Sentinel
+            </a>
+            
+            <div class="navbar-nav ms-auto d-none d-lg-flex">
+                <a class="nav-link-custom active me-2" href="/pm/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </a>
+                <a class="nav-link-custom me-2" href="/pm/projects">
+                    <i class="fas fa-project-diagram me-1"></i>Projects
+                </a>
+                <a class="nav-link-custom me-2" href="/pm/risks">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Risks
+                </a>
+                <a class="nav-link-custom me-2" href="/pm/tasks">
+                    <i class="fas fa-tasks me-1"></i>Tasks
+                </a>
+                <a class="nav-link-custom" href="/pm/reports">
+                    <i class="fas fa-chart-bar me-1"></i>Reports
+                </a>
+            </div>
+            
+            <div class="dropdown ms-2">
+                <a class="dropdown-toggle d-flex align-items-center p-2 rounded text-dark fw-semibold text-decoration-none" 
+                   data-bs-toggle="dropdown" style="background: rgba(102,126,234,0.08); font-size: 0.85rem;">
+                    <i class="fas fa-user-circle text-purple fs-6 me-1"></i>
+                    {{ session.get('username', 'PM') }}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><a class="dropdown-item fw-semibold" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar (HIDDEN BY DEFAULT) -->
+    <div class="sidebar-backdrop d-none" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+    <div id="mobileSidebar" class="position-fixed top-0 start-0 h-100 d-none d-lg-none" 
+         style="width: 260px; background: #1e293b; z-index: 1060; transform: translateX(-100%); transition: transform 0.25s ease;">
+        <div class="p-3">
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom" style="border-color: rgba(255,255,255,0.1);">
+                <h6 class="text-white mb-0 fw-bold"><i class="fas fa-shield-alt me-2"></i>Risk Sentinel</h6>
+                <button class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
+            </div>
+            <a href="/pm/dashboard" class="d-block p-2.5 text-white text-decoration-none rounded mb-2 sidebar-link active">
+                <i class="fas fa-tachometer-alt me-3"></i>Dashboard
+            </a>
+            <a href="/pm/projects" class="d-block p-2.5 text-white text-decoration-none rounded mb-2 sidebar-link">
+                <i class="fas fa-project-diagram me-3"></i>Projects
+            </a>
+            <a href="/pm/risks" class="d-block p-2.5 text-white text-decoration-none rounded mb-2 sidebar-link">
+                <i class="fas fa-exclamation-triangle me-3"></i>Risks
+            </a>
+            <a href="/pm/tasks" class="d-block p-2.5 text-white text-decoration-none rounded mb-2 sidebar-link">
+                <i class="fas fa-tasks me-3"></i>Tasks
+            </a>
+        </div>
+    </div>
+
+    <!-- PERFECTLY FIT CONTENT -->
+    <div class="content-wrapper">
+        <div class="main-content">
+            <div class="container-fluid px-3 px-lg-4">
+                
+                <!-- PERFECT HEADER -->
+                <div class="row mb-4 align-items-center">
+                    <div class="col">
+                        <h1 class="fw-bold mb-1" style="font-size: 1.75rem; color: #1e293b;">
+                            <i class="fas fa-briefcase me-2" style="color: var(--purple);"></i>
+                            Portfolio Overview
+                        </h1>
+                        <div class="text-muted small">Real-time insights • {{ total_projects }} projects</div>
+                    </div>
+                    <div class="col-auto">
+                        <a href="/pm/projects" class="btn fw-semibold px-3 py-1 shadow-sm" 
+                           style="background: linear-gradient(135deg, var(--purple), #764ba2); border: none; border-radius: 8px; color: white; font-size: 0.85rem;">
+                            <i class="fas fa-list me-1"></i>View Projects
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ULTRA-COMPACT KPI CARDS -->
+                <div class="row g-3 mb-4">
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+                        <div class="metric-card green h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <i class="fas fa-project-diagram metric-icon text-success"></i>
+                                <span class="badge bg-success bg-opacity-75 px-2 py-1 small">{{ total_projects }}</span>
+                            </div>
+                            <div class="metric-value text-success">{{ total_projects }}</div>
+                            <div class="metric-label">Projects</div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+                        <div class="metric-card red h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <i class="fas fa-exclamation-triangle metric-icon text-danger"></i>
+                                <span class="badge bg-danger bg-opacity-75 px-2 py-1 small">{{ high_risks }}</span>
+                            </div>
+                            <div class="metric-value text-danger">{{ total_risks }}</div>
+                            <div class="metric-label">Risks</div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+                        <div class="metric-card yellow h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <i class="fas fa-tasks metric-icon text-warning"></i>
+                                <span class="badge bg-warning bg-opacity-75 px-2 py-1 small">{{ overdue_tasks }}</span>
+                            </div>
+                            <div class="metric-value text-warning">{{ total_tasks }}</div>
+                            <div class="metric-label">Tasks</div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+                        <div class="metric-card blue h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <i class="fas fa-users metric-icon" style="color: var(--purple);"></i>
+                                <span class="badge px-2 py-1 small" style="background: rgba(102,126,234,0.2); color: var(--purple);">{{ team_members }}</span>
+                            </div>
+                            <div class="metric-value" style="color: var(--purple);">{{ team_members }}</div>
+                            <div class="metric-label">Team</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- OPTIMIZED CHARTS -->
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: var(--radius); overflow: hidden;">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-3 small" style="color: var(--purple);">
+                                    <i class="fas fa-chart-bar me-1"></i>Project Health
+                                </h6>
+                                <div class="chart-container">
+                                    <canvas id="projectChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: var(--radius); overflow: hidden;">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-3 small" style="color: var(--purple);">
+                                    <i class="fas fa-chart-pie me-1"></i>Risk Status
+                                </h6>
+                                <div class="chart-container">
+                                    <canvas id="riskChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPACT PROJECTS LIST -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm" style="border-radius: var(--radius);">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold mb-0 small" style="color: var(--purple);">
+                                        <i class="fas fa-list me-1"></i>Recent Projects
+                                    </h6>
+                                    <a href="/pm/projects" class="small text-purple fw-semibold text-decoration-none">View All</a>
+                                </div>
+                                {% for project in projects %}
+                                <div class="project-item">
+                                    <div>
+                                        <div class="fw-bold small mb-0" style="max-width: 200px;">{{ project.name[:25] }}</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">{{ project.status }}</div>
+                                    </div>
+                                    <div class="text-end">
+                                        {% if project.budget_total %}
+                                        <div class="project-progress-bar small">
+                                            <div class="bg-purple" style="width: {{ project.budget_pct }}%; height: 100%; border-radius: 2px;"></div>
+                                        </div>
+                                        <div class="small text-muted">{{ project.budget_pct }}%</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // ULTRA-FAST SIDEBAR
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            sidebar.classList.toggle('d-none');
+            backdrop.classList.toggle('d-none');
+        }
+
+        // OPTIMIZED CHARTS - 60fps smooth
+        document.addEventListener('DOMContentLoaded', function() {
+            // Project Chart - SUPER FAST
+            const projectCtx = document.getElementById('projectChart').getContext('2d');
+            new Chart(projectCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for project in projects %}'{{ project.name[:12] }}',{% endfor %}],
+                    datasets: [{
+                        data: [{% for project in projects %}{% if project.status == 'Active' %}85{% elif project.status == 'Planning' %}70{% else %}45{% endif %},{% endfor %}],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#667eea'],
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 800 },
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100,
+                            ticks: { stepSize: 25, font: { size: 11 } }
+                        },
+                        x: { ticks: { font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Risk Chart - ULTRA-LIGHT
+            const riskCtx = document.getElementById('riskChart').getContext('2d');
+            new Chart(riskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Red', 'Amber', 'Green'],
+                    datasets: [{
+                        data: [{% if risk_chart.get('Red', 0) %}{{ risk_chart.Red }}{% else %}0{% endif %}, 
+                               {% if risk_chart.get('Amber', 0) %}{{ risk_chart.Amber }}{% else %}2{% endif %}, 
+                               {% if risk_chart.get('Green', 0) %}{{ risk_chart.Green }}{% else %}0{% endif %}],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '60%'
+                }
+            });
+        });
+    </script>
+</body>
+</html>
