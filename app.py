@@ -205,7 +205,7 @@ def pm_teams():
     return render_template('pm/teams.html', **get_pm_data())
 
 # 🔥 PM PROJECTS CRUD
-@app.route('/pm/projects/save', methods=['POST'])
+'''@app.route('/pm/projects/save', methods=['POST'])
 def pm_projects_save():
     if session.get('role') != 'PM': return jsonify({'success': False})
     data = request.form
@@ -234,6 +234,78 @@ def pm_projects_delete(project_id):
     mysql.connection.commit()
     cur.close()
     return jsonify({'success': True})
+'''
+@app.route('/pm/projects/save', methods=['POST'])
+def pm_projects_save():
+    """Create or update project (handles both new/edit modals)"""
+    if 'user_id' not in session or session.get('role') != 'pm':
+        return jsonify({'success': False, 'error': 'PM access only'}), 403
+    
+    pm_user_id = session['user_id']
+    form_data = request.form
+    
+    try:
+        cur = mysql.connection.cursor()
+        
+        project_id = form_data.get('project_id')
+        
+        if project_id:  # UPDATE existing
+            cur.execute("""
+                UPDATE projects 
+                SET name=%s, status=%s, budget_total=%s, start_date=%s, 
+                    end_date=%s, team_lead_id=%s, updated_at=NOW()
+                WHERE project_id=%s AND pm_user_id=%s
+            """, (form_data['name'], form_data['status'], 
+                  form_data.get('budget_total', 0), form_data.get('start_date'),
+                  form_data.get('end_date'), form_data.get('team_lead_id'),
+                  project_id, pm_user_id))
+            
+            if cur.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Project not found'})
+            
+            message = f'Project "{form_data["name"]}" updated successfully!'
+        else:  # CREATE new
+            cur.execute("""
+                INSERT INTO projects (pm_user_id, name, status, budget_total, 
+                                     start_date, end_date, team_lead_id, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+            """, (pm_user_id, form_data['name'], form_data['status'],
+                  form_data.get('budget_total', 0), form_data.get('start_date'),
+                  form_data.get('end_date'), form_data.get('team_lead_id')))
+            
+            message = f'Project "{form_data["name"]}" created successfully!'
+        
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({'success': True, 'message': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/pm/projects/delete/<int:project_id>', methods=['POST'])
+def pm_projects_delete(project_id):
+    """Delete project by ID"""
+    if 'user_id' not in session or session.get('role') != 'pm':
+        return jsonify({'success': False, 'error': 'PM access only'}), 403
+    
+    pm_user_id = session['user_id']
+    
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT name FROM projects WHERE project_id=%s AND pm_user_id=%s", (project_id, pm_user_id))
+        project = cur.fetchone()
+        
+        if not project:
+            return jsonify({'success': False, 'error': 'Project not found'})
+        
+        cur.execute("DELETE FROM projects WHERE project_id=%s AND pm_user_id=%s", (project_id, pm_user_id))
+        mysql.connection.commit()
+        cur.close()
+        
+        return jsonify({'success': True, 'message': f'"{project["name"]}" deleted successfully!'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # 🔥 VENDOR DASHBOARD (BASIC)
 @app.route('/vendor/dashboard')
