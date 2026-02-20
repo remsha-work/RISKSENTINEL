@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risks Management - Risk Sentinel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --purple: #8b5cf6; --success: #10b981; --warning: #f59e0b; --danger: #f87171;
+        }
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh; padding-top: 80px;
+        }
+        
+        /* Navbar */
+        .navbar { 
+            background: rgba(255,255,255,0.97) !important;
+            backdrop-filter: blur(20px); box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            padding: 0.75rem 0;
+        }
+        .navbar-brand { 
+            font-weight: 700; font-size: 1.4rem; 
+            background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .nav-link { 
+            padding: 0.75rem 1.75rem !important; 
+            margin: 0 0.125rem; border-radius: 10px; font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover, .nav-link.active { 
+            background: var(--primary) !important; color: white !important; 
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        /* Hero */
+        h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .hero-p { font-size: 1.05rem; opacity: 0.8; }
+
+        /* Risk Cards */
+        .risks-card { border-radius: 16px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+        .table th { font-weight: 600; border: none; padding: 1.5rem 1.25rem; background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%); }
+        .table td { padding: 1.25rem; vertical-align: middle; border-color: rgba(0,0,0,0.04); }
+        .table tbody tr:hover { background: #f8fafc; transform: scale(1.01); }
+
+        /* Risk Status Badges */
+        .risk-badge { font-size: 0.85rem; padding: 0.5em 1em; border-radius: 25px; font-weight: 600; }
+        .risk-critical { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .risk-high { background: linear-gradient(135deg, #f87171, #ef4444); color: white; }
+        .risk-medium { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .risk-low { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+
+        /* Priority Badges */
+        .priority-badge { font-size: 0.8rem; padding: 0.3em 0.7em; border-radius: 15px; font-weight: 500; }
+        .priority-p1 { background: #fef3c7; color: #92400e; }
+        .priority-p2 { background: #fed7aa; color: #c2410c; }
+        .priority-p3 { background: #dbeafe; color: #1e40af; }
+
+        /* Action buttons */
+        .action-btn { width: 38px; height: 38px; border-radius: 8px; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; }
+
+        /* Stats */
+        .stat-box { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; height: 100%; }
+        .stat-box h3 { font-size: 2rem; font-weight: 700; margin: 0; }
+        .stat-box p { margin: 0; opacity: 0.8; }
+
+        /* Progress bars */
+        .progress { height: 8px; border-radius: 10px; background: #f1f5f9; }
+        .progress-bar { border-radius: 10px; }
+
+        /* MODAL */
+        .modal-content { border-radius: 20px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .form-control, .form-select { border: 2px solid #e5e7eb; border-radius: 12px; padding: 0.875rem 1rem; }
+        .form-control:focus, .form-select:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.15); }
+    </style>
+</head>
+<body>
+    <!-- Navbar - RISKS ACTIVE -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/admin/dashboard">
+                <i class="fas fa-shield-alt me-2" style="font-size: 1.5rem;"></i>Risk Sentinel
+            </a>
+            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fas fa-bars fs-3 text-purple"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/users"><i class="fas fa-users"></i> Users</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/enterprises"><i class="fas fa-building"></i> Enterprises</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/admin/risks"><i class="fas fa-exclamation-triangle"></i> Risks</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid px-4 py-4">
+        <!-- Hero -->
+        <div class="mb-5">
+            <h1 class="text-dark mb-2">Risks Management</h1>
+            <p class="text-muted mb-0 hero-p">Monitor and manage all enterprise risks in real-time</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-danger">3</h3>
+                    <p>Open Risks</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-warning">7</h3>
+                    <p>Medium Priority</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-primary">12</h3>
+                    <p>Total Risks</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-success">85%</h3>
+                    <p>Mitigated</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons + Filters -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex gap-3 flex-wrap align-items-center">
+                    <button class="btn btn-danger px-4 py-2 fs-6" data-bs-toggle="modal" data-bs-target="#addRiskModal">
+                        <i class="fas fa-plus me-2"></i>New Risk
+                    </button>
+                    <button class="btn btn-outline-success px-4 py-2 fs-6" onclick="exportRisksCSV()">
+                        <i class="fas fa-download me-2"></i>Export Risks (CSV)
+                    </button>
+                    <div class="ms-auto d-flex gap-2">
+                        <select class="form-select" style="width: 150px;" id="riskFilter">
+                            <option value="">All Risks</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                        <div class="input-group" style="width: 250px;">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search risks...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risks Table - YOUR 3 OPEN RISKS -->
+        <div class="risks-card">
+            <div class="table-responsive">
+                <table class="table mb-0" id="risksTable">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag me-2 text-muted"></i>ID</th>
+                            <th><i class="fas fa-exclamation-triangle me-2 text-muted"></i>Risk</th>
+                            <th><i class="fas fa-building me-2 text-muted"></i>Enterprise</th>
+                            <th><i class="fas fa-clock me-2 text-muted"></i>Detected</th>
+                            <th><i class="fas fa-fire me-2 text-muted"></i>Severity</th>
+                            <th><i class="fas fa-list-ol me-2 text-muted"></i>Priority</th>
+                            <th><i class="fas fa-tasks me-2 text-muted"></i>Progress</th>
+                            <th><i class="fas fa-cogs me-2 text-muted"></i>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- YOUR 3 REAL OPEN RISKS -->
+                        <tr>
+                            <td><strong>#001</strong></td>
+                            <td>
+                                <div>
+                                    <strong>API Key Exposed</strong><br>
+                                    <small class="text-muted">Production API key committed to GitHub</small>
+                                </div>
+                            </td>
+                            <td>Remsha Tech</td>
+                            <td>2026-02-18</td>
+                            <td><span class="risk-badge risk-high">High</span></td>
+                            <td><span class="priority-badge priority-p1">P1</span></td>
+                            <td>
+                                <div class="w-100">
+                                    <div class="progress mb-1">
+                                        <div class="progress-bar bg-warning" style="width: 40%"></div>
+                                    </div>
+                                    <small class="text-muted">40% complete</small>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="action-btn btn btn-outline-primary me-1" title="View"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn btn btn-outline-success me-1" title="Assign"><i class="fas fa-user-plus"></i></button>
+                                <button class="action-btn btn btn-outline-danger" title="Close"><i class="fas fa-check-circle"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>#002</strong></td>
+                            <td>
+                                <div>
+                                    <strong>Third-party Vendor Delay</strong><br>
+                                    <small class="text-muted">Payment gateway integration overdue</small>
+                                </div>
+                            </td>
+                            <td>TechCorp</td>
+                            <td>2026-02-15</td>
+                            <td><span class="risk-badge risk-medium">Medium</span></td>
+                            <td><span class="priority-badge priority-p2">P2</span></td>
+                            <td>
+                                <div class="w-100">
+                                    <div class="progress mb-1">
+                                        <div class="progress-bar bg-info" style="width: 75%"></div>
+                                    </div>
+                                    <small class="text-muted">75% complete</small>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="action-btn btn btn-outline-primary me-1" title="View"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn btn btn-outline-success me-1" title="Assign"><i class="fas fa-user-plus"></i></button>
+                                <button class="action-btn btn btn-outline-danger" title="Close"><i class="fas fa-check-circle"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>#003</strong></td>
+                            <td>
+                                <div>
+                                    <strong>Technical Debt Accumulation</strong><br>
+                                    <small class="text-muted">Legacy code in payment module</small>
+                                </div>
+                            </td>
+                            <td>Remsha Tech</td>
+                            <td>2026-02-12</td>
+                            <td><span class="risk-badge risk-medium">Medium</span></td>
+                            <td><span class="priority-badge priority-p2">P2</span></td>
+                            <td>
+                                <div class="w-100">
+                                    <div class="progress mb-1">
+                                        <div class="progress-bar bg-success" style="width: 20%"></div>
+                                    </div>
+                                    <small class="text-muted">20% complete</small>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="action-btn btn btn-outline-primary me-1" title="View"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn btn btn-outline-success me-1" title="Assign"><i class="fas fa-user-plus"></i></button>
+                                <button class="action-btn btn btn-outline-danger" title="Close"><i class="fas fa-check-circle"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ADD RISK MODAL -->
+    <div class="modal fade" id="addRiskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>New Risk</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="addRiskForm">
+                    <div class="modal-body p-4">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Risk Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="title" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Enterprise <span class="text-danger">*</span></label>
+                                <select class="form-select" name="enterprise" required>
+                                    <option value="">Select Enterprise</option>
+                                    <option value="Remsha Tech">Remsha Tech Solutions</option>
+                                    <option value="TechCorp">TechCorp Innovations</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Severity <span class="text-danger">*</span></label>
+                                <select class="form-select" name="severity" required>
+                                    <option value="">Select Severity</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Priority</label>
+                                <select class="form-select" name="priority">
+                                    <option value="p1">P1 (Critical)</option>
+                                    <option value="p2">P2 (High)</option>
+                                    <option value="p3">P3 (Medium)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Assigned To</label>
+                                <select class="form-select" name="assigned">
+                                    <option value="">Unassigned</option>
+                                    <option value="pmjohn">PM John</option>
+                                    <option value="analyst123">Analyst 123</option>
+                                    <option value="srdev_alex">SrDev Alex</option>
+                                </select>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-semibold">Description</label>
+                                <textarea class="form-control" name="description" rows="3" placeholder="Describe the risk..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-plus me-2"></i>Create Risk
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // SEARCH + FILTER
+        document.getElementById('searchInput').addEventListener('input', function() {
+            filterRisks();
+        });
+        document.getElementById('riskFilter').addEventListener('change', filterRisks);
+
+        function filterRisks() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const severity = document.getElementById('riskFilter').value;
+            const rows = document.querySelectorAll('#risksTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const rowSeverity = row.querySelector('.risk-badge').textContent.toLowerCase();
+                
+                const matchesSearch = text.includes(search);
+                const matchesSeverity = !severity || rowSeverity.includes(severity);
+                
+                row.style.display = matchesSearch && matchesSeverity ? '' : 'none';
+            });
+        }
+
+        // CSV EXPORT
+        function exportRisksCSV() {
+            const risks = [
+                {id:'001', title:'API Key Exposed', enterprise:'Remsha Tech', detected:'2026-02-18', severity:'High', priority:'P1', progress:'40%'},
+                {id:'002', title:'Third-party Vendor Delay', enterprise:'TechCorp', detected:'2026-02-15', severity:'Medium', priority:'P2', progress:'75%'},
+                {id:'003', title:'Technical Debt Accumulation', enterprise:'Remsha Tech', detected:'2026-02-12', severity:'Medium', priority:'P2', progress:'20%'}
+            ];
+            
+            let csv = 'ID,Title,Enterprise,Detected,Severity,Priority,Progress\n';
+            risks.forEach(risk => csv += `"${risk.id}","${risk.title}","${risk.enterprise}","${risk.detected}","${risk.severity}","${risk.priority}","${risk.progress}"\n`);
+            
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            link.download = 'risk_sentinel_risks.csv';
+            link.click();
+        }
+
+        // FORM SUBMISSION
+        document.getElementById('addRiskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('✅ Risk created successfully! (Backend pending)');
+            bootstrap.Modal.getInstance(document.getElementById('addRiskModal')).hide();
+            this.reset();
+        });
+
+        // Navbar active
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.href === window.location.href) link.classList.add('active');
+        });
+    </script>
+</body>
+</html>

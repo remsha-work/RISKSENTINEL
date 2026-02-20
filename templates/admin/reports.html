@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics - Risk Sentinel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --purple: #8b5cf6; --success: #10b981; --warning: #f59e0b; --danger: #f87171;
+        }
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh; padding-top: 80px;
+        }
+        
+        /* Navbar */
+        .navbar { 
+            background: rgba(255,255,255,0.97) !important;
+            backdrop-filter: blur(20px); box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            padding: 0.75rem 0;
+        }
+        .navbar-brand { 
+            font-weight: 700; font-size: 1.4rem; 
+            background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .nav-link { 
+            padding: 0.75rem 1.75rem !important; 
+            margin: 0 0.125rem; border-radius: 10px; font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover, .nav-link.active { 
+            background: var(--primary) !important; color: white !important; 
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        /* Hero */
+        h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .hero-p { font-size: 1.05rem; opacity: 0.8; }
+
+        /* Charts */
+        .chart-card { border-radius: 16px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+        .chart-container { height: 320px; position: relative; }
+        .chart-title { font-weight: 600; font-size: 1.1rem; }
+
+        /* Stats */
+        .stat-box { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; height: 100%; }
+        .stat-box h3 { font-size: 2rem; font-weight: 700; margin: 0; }
+        .stat-box p { margin: 0; opacity: 0.8; }
+
+        /* Report cards */
+        .report-card { background: white; border-radius: 16px; padding: 1.75rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.3s ease; }
+        .report-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
+        .report-icon { width: 60px; height: 60px; border-radius: 16px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; }
+
+        /* Export buttons */
+        .export-btn { padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 500; border: 2px solid; transition: all 0.3s ease; }
+        .export-pdf { background: linear-gradient(135deg, #ec4899, #db2777); border-color: #ec4899; color: white; }
+        .export-excel { background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; color: white; }
+        .export-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+
+        @media (max-width: 768px) {
+            .chart-container { height: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar - REPORTS ACTIVE -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/admin/dashboard">
+                <i class="fas fa-shield-alt me-2" style="font-size: 1.5rem;"></i>Risk Sentinel
+            </a>
+            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fas fa-bars fs-3 text-purple"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/users"><i class="fas fa-users"></i> Users</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/enterprises"><i class="fas fa-building"></i> Enterprises</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/risks"><i class="fas fa-exclamation-triangle"></i> Risks</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/admin/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid px-4 py-4">
+        <!-- Hero -->
+        <div class="mb-5">
+            <h1 class="text-dark mb-2">Reports & Analytics</h1>
+            <p class="text-muted mb-0 hero-p">Comprehensive insights across enterprises and risks</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="row g-3 mb-5">
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-primary">2</h3>
+                    <p>Active Enterprises</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-success">$57,500</h3>
+                    <p>Total Revenue</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-warning">3.8</h3>
+                    <p>Avg Risk Score</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-box">
+                    <h3 class="text-info">92%</h3>
+                    <p>Compliance Rate</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-6">
+                <div class="chart-card h-100">
+                    <div class="p-4">
+                        <h6 class="chart-title mb-4">
+                            <i class="fas fa-chart-pie me-2 text-purple"></i>Risk Distribution
+                        </h6>
+                        <div class="chart-container">
+                            <canvas id="riskPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card h-100">
+                    <div class="p-4">
+                        <h6 class="chart-title mb-4">
+                            <i class="fas fa-chart-line me-2 text-success"></i>Risk Trends (30 days)
+                        </h6>
+                        <div class="chart-container">
+                            <canvas id="riskTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reports -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="report-card h-100">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="report-icon bg-primary text-white me-3">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Executive Summary</h6>
+                            <p class="text-muted mb-0 small">Monthly risk overview for all enterprises</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="export-btn export-pdf flex-fill" onclick="downloadPDF('executive')">
+                            <i class="fas fa-download me-1"></i>PDF
+                        </button>
+                        <button class="export-btn export-excel" onclick="downloadExcel('executive')">
+                            <i class="fas fa-file-excel me-1"></i>XLS
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="report-card h-100">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="report-icon bg-success text-white me-3">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Risk Analytics</h6>
+                            <p class="text-muted mb-0 small">Detailed risk metrics and trends</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="export-btn export-pdf flex-fill" onclick="downloadPDF('analytics')">
+                            <i class="fas fa-download me-1"></i>PDF
+                        </button>
+                        <button class="export-btn export-excel" onclick="downloadExcel('analytics')">
+                            <i class="fas fa-file-excel me-1"></i>XLS
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="report-card h-100">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="report-icon bg-warning text-white me-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">User Activity</h6>
+                            <p class="text-muted mb-0 small">Enterprise user engagement report</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="export-btn export-pdf flex-fill" onclick="downloadPDF('activity')">
+                            <i class="fas fa-download me-1"></i>PDF
+                        </button>
+                        <button class="export-btn export-excel" onclick="downloadExcel('activity')">
+                            <i class="fas fa-file-excel me-1"></i>XLS
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export All -->
+        <div class="text-center">
+            <button class="btn btn-primary btn-lg px-5 py-3" onclick="exportAllReports()">
+                <i class="fas fa-archive me-2"></i>Export All Reports (ZIP)
+            </button>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Risk Pie Chart
+        const riskPieCtx = document.getElementById('riskPieChart').getContext('2d');
+        new Chart(riskPieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [3, 7, 2],
+                    backgroundColor: ['#f87171', '#f59e0b', '#10b981'],
+                    borderWidth: 0,
+                    cutout: '65%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 25, usePointStyle: true } }
+                }
+            }
+        });
+
+        // Risk Trends Chart
+        const trendCtx = document.getElementById('riskTrendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan 1', 'Jan 8', 'Jan 15', 'Jan 22', 'Jan 29', 'Feb 5', 'Feb 12'],
+                datasets: [{
+                    label: 'Open Risks',
+                    data: [8, 7, 6, 5, 4, 3, 3],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Export Functions (Simulated downloads)
+        function downloadPDF(type) {
+            const reports = {
+                'executive': 'Risk_Sentinel_Executive_Summary.pdf',
+                'analytics': 'Risk_Sentinel_Analytics_Report.pdf',
+                'activity': 'Risk_Sentinel_User_Activity.pdf'
+            };
+            alert(`✅ Downloading ${reports[type]} (Backend integration pending)`);
+        }
+
+        function downloadExcel(type) {
+            const reports = {
+                'executive': 'Risk_Sentinel_Executive_Summary.xlsx',
+                'analytics': 'Risk_Sentinel_Analytics_Report.xlsx',
+                'activity': 'Risk_Sentinel_User_Activity.xlsx'
+            };
+            alert(`✅ Downloading ${reports[type]} (Backend integration pending)`);
+        }
+
+        function exportAllReports() {
+            alert('✅ All reports ZIP downloading... (Backend integration pending)');
+        }
+
+        // Navbar active
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.href === window.location.href) link.classList.add('active');
+        });
+    </script>
+</body>
+</html>
