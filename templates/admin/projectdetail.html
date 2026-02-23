@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Details - Risk Sentinel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --purple-primary: #6B46C1;
+            --purple-light: #A78BFA;
+            --purple-dark: #4C1D95;
+            --white-bg: #F8FAFC;
+            --glass-bg: rgba(255,255,255,0.25);
+            --glass-border: rgba(255,255,255,0.2);
+            --shadow: 0 8px 32px rgba(31,38,135,0.37);
+            --shadow-hover: 0 20px 40px rgba(31,38,135,0.5);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: linear-gradient(135deg, var(--white-bg) 0%, #E2E8F0 50%, #CBD5E1 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* SAME PERFECT SIDEBAR + TOPBAR */
+        .sidebar { 
+            position: fixed; left: -300px; top: 0; width: 300px; height: 100vh; 
+            background: rgba(255,255,255,0.98); backdrop-filter: blur(25px);
+            box-shadow: var(--shadow); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1050; border-right: 1px solid rgba(255,255,255,0.3);
+        }
+        .sidebar.active { left: 0; box-shadow: var(--shadow-hover); }
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            z-index: 1040; opacity: 0; visibility: hidden; transition: all 0.4s ease;
+        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
+        
+        .topbar { 
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(25px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 1.2rem 2.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.3); position: sticky; top: 0; z-index: 1000;
+        }
+        
+        .glass-card {
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 24px;
+            box-shadow: var(--shadow); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .glass-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--purple-primary), var(--purple-light));
+        }
+        .glass-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+        
+        .status-badge { padding: 0.5rem 1.2rem; border-radius: 50px; font-size: 0.8rem; font-weight: 700; }
+        .status-active { background: linear-gradient(135deg, #10B981, #34D399); color: white; }
+        .status-high { background: linear-gradient(135deg, #EF4444, #F87171); color: white; }
+        .status-medium { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: white; }
+        
+        .btn-purple { 
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-light));
+            border: none; border-radius: 16px; color: white; padding: 0.85rem 2rem;
+            font-weight: 600; transition: all 0.4s; box-shadow: 0 4px 15px rgba(107,70,193,0.3);
+        }
+        .btn-purple:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(107,70,193,0.5); color: white !important; }
+        
+        .sidebar-nav-link {
+            display: flex; align-items: center; padding: 1rem 1.5rem; margin-bottom: 1rem;
+            border-radius: 16px; text-decoration: none; color: #4A5568; font-weight: 600;
+            transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.3);
+        }
+        .sidebar-nav-link:hover, .sidebar-nav-link.active {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-light));
+            color: white !important; transform: translateX(8px); box-shadow: 0 8px 25px rgba(107,70,193,0.3);
+        }
+        
+        .project-progress { height: 10px; border-radius: 10px; background: rgba(0,0,0,0.1); }
+        .chart-container { height: 300px; position: relative; }
+        .risk-item { padding: 1rem; border-radius: 12px; margin-bottom: 1rem; border-left: 4px solid; }
+        @media (max-width: 992px) { .sidebar { width: 85vw; left: -85vw; } .topbar { padding: 1rem 1.5rem; } }
+    </style>
+</head>
+<body>
+    <!-- 🔥 MOBILE HAMBURGER -->
+    <button class="btn btn-purple position-fixed start-0 top-0 m-4 z-1060 d-lg-none shadow-lg" 
+            onclick="toggleSidebar()" style="border-radius: 50px; width: 56px; height: 56px;">
+        <i class="fas fa-bars fs-4"></i>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- 🔥 SIDEBAR -->
+    <div class="sidebar d-lg-block" id="sidebar">
+        <div class="p-5 border-bottom" style="background: linear-gradient(135deg, var(--purple-primary), var(--purple-light)); color: white;">
+            <div class="text-center mb-4">
+                <div class="bg-white bg-opacity-20 rounded-circle p-3 mx-auto mb-3" style="width: 80px; height: 80px;">
+                    <i class="fas fa-shield-alt fs-1"></i>
+                </div>
+                <h4 class="mb-1 fw-bold">Risk Sentinel</h4>
+                <small class="opacity-75">Enterprise Admin Panel</small>
+            </div>
+        </div>
+        <nav class="p-4 px-lg-5">
+            <a href="/admin/dashboard" class="sidebar-nav-link"><i class="fas fa-tachometer-alt me-4 fs-4"></i><span>Dashboard</span></a>
+            <a href="/admin/user_management" class="sidebar-nav-link"><i class="fas fa-users me-4 fs-4"></i><span>User Management</span></a>
+            <a href="/admin/reports" class="sidebar-nav-link"><i class="fas fa-chart-bar me-4 fs-4"></i><span>Reports</span></a>
+            <a href="/admin/projects" class="sidebar-nav-link active"><i class="fas fa-project-diagram me-4 fs-4 text-white"></i><span>Projects</span></a>
+            <div class="dropdown-divider my-4"></div>
+            <a href="/logout" class="sidebar-nav-link"><i class="fas fa-sign-out-alt me-4 fs-4"></i><span>Logout</span></a>
+        </nav>
+    </div>
+
+    <!-- 🔥 TOPBAR -->
+    <div class="topbar">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0 fw-bold text-purple-primary">
+                    <i class="fas fa-project-diagram me-2"></i>{{ project.name|default('API Payment Gateway') }}
+                </h5>
+            </div>
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none p-2 rounded-pill glass-card" data-bs-toggle="dropdown">
+                    <img src="https://ui-avatars.com/api/?name={{ current_user.username if current_user.is_authenticated else 'Admin' }}&background=6B46C1&color=fff&size=36" 
+                         class="rounded-circle me-2" width="36" height="36">
+                    <div>
+                        <div class="fw-bold small">{{ current_user.username if current_user.is_authenticated else 'Admin' }}</div>
+                        <small class="text-muted">Administrator</small>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2">
+                    <li><a class="dropdown-item fw-bold" href="/logout"><i class="fas fa-sign-out-alt me-3 text-purple-primary"></i>Sign Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔥 MAIN CONTENT -->
+    <main class="pt-5 mt-4 px-4 px-lg-5 pb-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show rounded-3 shadow-sm mb-4 glass-card" role="alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 🔥 PROJECT HEADER -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-8">
+                <div class="glass-card p-5 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+                        <div>
+                            <h2 class="fw-bold mb-1 text-purple-primary">{{ project.name|default('API Payment Gateway v2.0') }}</h2>
+                            <small class="text-muted">Project ID: {{ project.id|default(4) }} | Started: {{ project.start_date|default('Feb 10, 2026') }}</small>
+                        </div>
+                        <span class="status-badge status-active">{{ project.status|default('Active') }}</span>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line fs-2 text-purple-primary mb-2"></i>
+                                <h4 class="fw-bold mb-1">{{ project.timeline_progress|default(65) }}%</h4>
+                                <small class="text-muted">Timeline Progress</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-rupee-sign fs-2 text-success mb-2"></i>
+                                <h4 class="fw-bold mb-1 text-success">₹{{ project.budget_spent|default(15000)|int }}K</h4>
+                                <small class="text-muted">Spent / ₹{{ project.budget_total|default(50000)|int }}K</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-users fs-2 text-purple-primary mb-2"></i>
+                                <h4 class="fw-bold mb-1">{{ project.team_size|default(4) }}</h4>
+                                <small class="text-muted">Team Members</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-exclamation-triangle fs-2 text-danger mb-2"></i>
+                                <h4 class="fw-bold mb-1 text-danger">{{ project.risk_count|default(2) }}</h4>
+                                <small class="text-muted">High Risks</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Project Manager</label>
+                            <div class="d-flex align-items-center p-3 rounded-3 glass-card">
+                                <img src="https://ui-avatars.com/api/?name={{ project.pm_name|default('John Doe') }}&background=6B46C1&color=fff&size=40" 
+                                     class="rounded-circle me-3" width="40" height="40">
+                                <div>
+                                    <div class="fw-bold">{{ project.pm_name|default('John Doe') }}</div>
+                                    <small class="text-muted">{{ project.pm_email|default('john@remshatech.com') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Deadline</label>
+                            <div class="p-3 rounded-3 glass-card text-center">
+                                <i class="fas fa-calendar-alt me-2 text-purple-primary"></i>
+                                <h5 class="mb-0 fw-bold text-purple-primary">{{ project.deadline|default('Mar 15, 2026') }}</h5>
+                                <small class="text-muted">{{ project.days_left|default(19) }} days left</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card p-5 h-100">
+                    <h5 class="fw-bold text-purple-primary mb-4">
+                        <i class="fas fa-chart-pie me-2"></i>Task Distribution
+                    </h5>
+                    <div class="chart-container">
+                        <canvas id="taskChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 🔥 RISKS SECTION -->
+            <div class="col-lg-6">
+                <div class="glass-card p-5 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold text-purple-primary mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Critical Risks ({{ project.risk_count|default(2) }})
+                        </h5>
+                        <span class="status-badge status-high">High Priority</span>
+                    </div>
+                    <div class="risk-item" style="border-left-color: #EF4444; background: rgba(239,68,68,0.05);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="fw-bold mb-1">API Rate Limiting Failure</h6>
+                                <small class="text-muted">Potential DoS vulnerability</small>
+                            </div>
+                            <span class="badge status-high">High</span>
+                        </div>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted">PM: John Doe • Due: Mar 5</small>
+                        </div>
+                    </div>
+                    <div class="risk-item" style="border-left-color: #F59E0B; background: rgba(245,158,11,0.05);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="fw-bold mb-1">Third-party Integration Delay</h6>
+                                <small class="text-muted">Vendor dependency risk</small>
+                            </div>
+                            <span class="badge status-medium">Medium</span>
+                        </div>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted">PM: Sarah Wilson • Due: Mar 8</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🔥 TEAM MEMBERS -->
+            <div class="col-lg-6">
+                <div class="glass-card p-5 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold text-purple-primary mb-0">
+                            <i class="fas fa-users me-2"></i>Team ({{ project.team_size|default(4) }})
+                        </h5>
+                        <button class="btn btn-outline-purple btn-sm">
+                            <i class="fas fa-plus me-1"></i>Add Member
+                        </button>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="text-center p-3 rounded-3 glass-card">
+                                <img src="https://ui-avatars.com/api/?name=John+Doe&background=10B981&color=fff&size=50" class="rounded-circle mx-auto mb-2" width="50" height="50">
+                                <div class="fw-bold small">John Doe</div>
+                                <small class="text-muted">Project Manager</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3 rounded-3 glass-card">
+                                <img src="https://ui-avatars.com/api/?name=Sarah+Wilson&background=3B82F6&color=fff&size=50" class="rounded-circle mx-auto mb-2" width="50" height="50">
+                                <div class="fw-bold small">Sarah Wilson</div>
+                                <small class="text-muted">Lead Developer</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3 rounded-3 glass-card">
+                                <img src="https://ui-avatars.com/api/?name=Mike+Chen&background=F59E0B&color=fff&size=50" class="rounded-circle mx-auto mb-2" width="50" height="50">
+                                <div class="fw-bold small">Mike Chen</div>
+                                <small class="text-muted">Risk Analyst</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3 rounded-3 glass-card">
+                                <img src="https://ui-avatars.com/api/?name=Lisa+Patel&background=EF4444&color=fff&size=50" class="rounded-circle mx-auto mb-2" width="50" height="50">
+                                <div class="fw-bold small">Lisa Patel</div>
+                                <small class="text-muted">QA Engineer</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔥 PROGRESS & BUDGET CHARTS -->
+        <div class="row g-4 mt-5">
+            <div class="col-lg-6">
+                <div class="glass-card p-5 h-100">
+                    <h5 class="fw-bold text-purple-primary mb-4">
+                        <i class="fas fa-chart-line me-2"></i>Timeline Progress
+                    </h5>
+                    <div class="chart-container">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card p-5 h-100">
+                    <h5 class="fw-bold text-purple-primary mb-4">
+                        <i class="fas fa-chart-pie me-2"></i>Budget Breakdown
+                    </h5>
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔥 ACTION BUTTONS -->
+        <div class="text-center mt-5">
+            <a href="/admin/projects" class="btn btn-outline-purple btn-lg px-5 me-3">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
+            </a>
+            <button class="btn btn-purple btn-lg px-5 me-3" data-bs-toggle="modal" data-bs-target="#editProjectModal">
+                <i class="fas fa-edit me-2"></i>Edit Project
+            </button>
+            <button class="btn btn-success btn-lg px-5">
+                <i class="fas fa-download me-2"></i>Export Report
+            </button>
+        </div>
+    </main>
+
+    <!-- 🔥 EDIT PROJECT MODAL -->
+    <div class="modal fade" id="editProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-purple-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Project Details
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/admin/update_project/{{ project.id|default(4) }}" method="POST">
+                    <div class="modal-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Project Name</label>
+                                <input type="text" name="name" value="{{ project.name|default('API Payment Gateway v2.0') }}" class="form-control rounded-3 glass-card p-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Status</label>
+                                <select name="status" class="form-select rounded-3 glass-card p-3" required>
+                                    <option value="Active" {{ 'selected' if project.status == 'Active' }}>Active</option>
+                                    <option value="Planning" {{ 'selected' if project.status == 'Planning' }}>Planning</option>
+                                    <option value="On Hold" {{ 'selected' if project.status == 'On Hold' }}>On Hold</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 px-4 pb-4">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-purple px-5">Update Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 🔥 SIDEBAR TOGGLE
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        // 🔥 CHARTS
+        document.addEventListener('DOMContentLoaded', function() {
+            // Task Distribution
+            const taskCtx = document.getElementById('taskChart')?.getContext('2d');
+            if (taskCtx) new Chart(taskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'In Progress', 'Pending'],
+                    datasets: [{ 
+                        data: [{{ (project.timeline_progress|default(65)*0.75)|int }}, {{ (project.timeline_progress|default(65)*0.15)|int }}, 15],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Timeline Progress
+            const timelineCtx = document.getElementById('timelineChart')?.getContext('2d');
+            if (timelineCtx) new Chart(timelineCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    datasets: [{
+                        label: 'Progress',
+                        data: [15, 35, 55, {{ project.timeline_progress|default(65) }}],
+                        borderColor: '#6B46C1',
+                        backgroundColor: 'rgba(107,70,193,0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Budget Breakdown
+            const budgetCtx = document.getElementById('budgetChart')?.getContext('2d');
+            if (budgetCtx) new Chart(budgetCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Spent', 'Remaining'],
+                    datasets: [{ 
+                        data: [{{ project.budget_spent|default(15000) }}, {{ project.budget_total|default(50000)-project.budget_spent|default(15000) }}],
+                        backgroundColor: ['#10B981', '#E5E7EB']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        });
+
+        document.querySelectorAll('.sidebar-nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) toggleSidebar();
+            });
+        });
+    </script>
+</body>
+</html>

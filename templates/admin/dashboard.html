@@ -4,285 +4,462 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Risk Sentinel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --purple: #8b5cf6; --success: #10b981; --warning: #f59e0b; --danger: #f87171;
+            --purple-primary: #6B46C1;
+            --purple-light: #A78BFA;
+            --purple-dark: #4C1D95;
+            --white-bg: #F8FAFC;
+            --glass-bg: rgba(255,255,255,0.25);
+            --glass-border: rgba(255,255,255,0.2);
+            --shadow: 0 8px 32px rgba(31,38,135,0.37);
+            --shadow-hover: 0 20px 40px rgba(31,38,135,0.5);
         }
-        * { font-family: 'Inter', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh; padding-top: 80px;
+            background: linear-gradient(135deg, var(--white-bg) 0%, #E2E8F0 50%, #CBD5E1 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
         
-        /* Navbar */
-        .navbar { 
-            background: rgba(255,255,255,0.97) !important;
-            backdrop-filter: blur(20px); box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-            padding: 0.75rem 0;
+        /* 🔥 PERFECT RESPONSIVE SIDEBAR */
+        .sidebar { 
+            position: fixed; 
+            left: -300px; 
+            top: 0; 
+            width: 300px; 
+            height: 100vh; 
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(25px);
+            box-shadow: var(--shadow);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1050;
+            border-right: 1px solid rgba(255,255,255,0.3);
         }
-        .navbar-brand { 
-            font-weight: 700; font-size: 1.4rem; 
-            background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        .sidebar.active { 
+            left: 0; 
+            box-shadow: var(--shadow-hover);
         }
-        .nav-link { 
-            padding: 0.75rem 1.75rem !important; 
-            margin: 0 0.125rem; border-radius: 10px; font-weight: 500;
-            transition: all 0.3s ease;
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
         }
-        .nav-link:hover, .nav-link.active { 
-            background: var(--primary) !important; color: white !important; 
-            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
-        .nav-link i { margin-right: 0.5rem; width: 18px; font-size: 1.1rem; }
-
-        /* PERFECTLY CENTERED ICONS */
-        .stat-card { 
-            border: none; border-radius: 16px; 
-            background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            padding: 1.75rem !important; height: 160px; transition: all 0.3s ease;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; /* CENTERED */
-            text-align: center;
+        
+        /* 🔥 GLASSMORPHISM TOPBAR */
+        .topbar { 
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(25px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 1.2rem 2.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
-        .stat-icon { 
-            width: 60px; height: 60px; border-radius: 14px; 
-            font-size: 1.5rem !important; /* BIGGER */
-            display: flex !important; align-items: center; justify-content: center; /* CENTERED */
+        
+        /* 🔥 PERFECT GLASS CARDS */
+        .glass-card {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--purple-primary), var(--purple-light));
+        }
+        .glass-card:hover { 
+            transform: translateY(-8px); 
+            box-shadow: var(--shadow-hover);
+        }
+        
+        /* 🔥 STATUS BADGES */
+        .status-badge { 
+            padding: 0.5rem 1.2rem; 
+            border-radius: 50px; 
+            font-size: 0.8rem; 
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .status-active { background: linear-gradient(135deg, #10B981, #34D399); color: white; }
+        .status-hold { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: white; }
+        .status-planning { background: linear-gradient(135deg, #3B82F6, #60A5FA); color: white; }
+        .status-high { background: linear-gradient(135deg, #EF4444, #F87171); color: white; }
+        
+        /* 🔥 BUTTONS */
+        .btn-purple { 
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-light));
+            border: none; 
+            border-radius: 16px; 
+            color: white; 
+            padding: 0.85rem 2rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(107,70,193,0.3);
+        }
+        .btn-purple:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 30px rgba(107,70,193,0.5);
+            color: white !important;
+        }
+        
+        /* 🔥 PERFECT NAV */
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
             margin-bottom: 1rem;
+            border-radius: 16px;
+            text-decoration: none;
+            color: #4A5568;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
         }
-        .stat-number { font-size: 2rem; font-weight: 700; margin: 0; line-height: 1.1; }
-        .stat-label { font-size: 0.9rem; opacity: 0.85; margin: 0.25rem 0 0 0; font-weight: 500; }
-
-        /* Charts */
-        .chart-card { border-radius: 16px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
-        .chart-container { height: 300px; position: relative; }
-
-        /* Hero - NO LIVE BADGE */
-        .hero-section h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .hero-section p { font-size: 1.05rem; opacity: 0.8; }
-
-        /* NORMAL LOGOUT BUTTON */
-        .logout-btn { 
-            padding: 0.75rem 1.5rem !important; border-radius: 8px !important; 
-            font-weight: 500 !important; border: 2px solid #e5e7eb !important; width: 100%;
-            transition: all 0.3s ease; background: white !important;
+        .sidebar-nav-link:hover, .sidebar-nav-link.active {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-light));
+            color: white !important;
+            transform: translateX(8px);
+            box-shadow: 0 8px 25px rgba(107,70,193,0.3);
         }
-        .logout-btn:hover { 
-            background: #fee2e2 !important; border-color: #f87171 !important; 
-            color: #dc2626 !important; transform: translateY(-1px);
+        
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 992px) {
+            .sidebar { width: 85vw; left: -85vw; }
+            .topbar { padding: 1rem 1.5rem; }
         }
-
-        /* Activity table */
-        .activity-card .table th { font-weight: 600; border: none; padding: 1.25rem; }
-        .activity-card .table td { padding: 1.25rem; vertical-align: middle; border-color: rgba(0,0,0,0.04); }
-
-        @media (max-width: 768px) {
-            .stat-icon { width: 52px; height: 52px; font-size: 1.3rem !important; }
-            .stat-number { font-size: 1.75rem; }
+        @media (max-width: 576px) {
+            .topbar h5 { font-size: 1.1rem !important; }
+            .glass-card { margin-bottom: 1.5rem; }
         }
+        
+        /* CHART CONTAINER */
+        .chart-container { height: 350px; position: relative; }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="/admin/dashboard">
-                <i class="fas fa-shield-alt me-2" style="font-size: 1.5rem;"></i>Risk Sentinel
+    <!-- 🔥 MOBILE SIDEBAR TOGGLE -->
+    <button class="btn btn-purple position-fixed start-0 top-0 m-4 z-1060 d-lg-none shadow-lg" 
+            onclick="toggleSidebar()" style="border-radius: 50px; width: 56px; height: 56px;">
+        <i class="fas fa-bars fs-4"></i>
+    </button>
+
+    <!-- 🔥 SIDEBAR OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- 🔥 PERFECT SIDEBAR -->
+    <div class="sidebar d-lg-block" id="sidebar">
+        <div class="p-5 border-bottom" style="background: linear-gradient(135deg, var(--purple-primary), var(--purple-light)); color: white;">
+            <div class="text-center mb-4">
+                <div class="bg-white bg-opacity-20 rounded-circle p-3 mx-auto mb-3" style="width: 80px; height: 80px;">
+                    <i class="fas fa-shield-alt fs-1"></i>
+                </div>
+                <h4 class="mb-1 fw-bold">Risk Sentinel</h4>
+                <small class="opacity-75">Enterprise Admin Panel</small>
+            </div>
+        </div>
+        <nav class="p-4 px-lg-5">
+            <a href="/admin/dashboard" class="sidebar-nav-link active">
+                <i class="fas fa-tachometer-alt me-4 fs-4 text-white"></i>
+                <span>Dashboard</span>
             </a>
-            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <i class="fas fa-bars fs-3 text-purple"></i>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link active" href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/users"><i class="fas fa-users"></i> Users</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/enterprises"><i class="fas fa-building"></i> Enterprises</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/risks"><i class="fas fa-exclamation-triangle"></i> Risks</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/settings"><i class="fas fa-cog"></i> Settings</a></li>
-                    <li class="nav-item ms-3">
-                        <div class="dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center p-2" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle text-purple fs-4 me-2"></i>
-                                <span class="d-none d-md-inline">Admin</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item logout-btn" href="/logout">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                </a></li>
-                            </ul>
-                        </div>
-                    </li>
+            <a href="/admin/user_management" class="sidebar-nav-link">
+                <i class="fas fa-users me-4 fs-4 text-white"></i>
+                <span>User Management</span>
+            </a>
+            <a href="/admin/reports" class="sidebar-nav-link">
+                <i class="fas fa-chart-bar me-4 fs-4 text-white"></i>
+                <span>Reports</span>
+            </a>
+            <a href="/admin/projects" class="sidebar-nav-link">
+                <i class="fas fa-project-diagram me-4 fs-4 text-white"></i>
+                <span>Projects</span>
+            </a>
+            <div class="dropdown-divider my-4"></div>
+            <a href="/logout" class="sidebar-nav-link">
+                <i class="fas fa-sign-out-alt me-4 fs-4 text-white"></i>
+                <span>Logout</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- 🔥 GLASSMORPHISM TOPBAR -->
+    <div class="topbar">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0 fw-bold text-purple-primary">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard Overview
+                </h5>
+            </div>
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none p-2 rounded-pill glass-card" data-bs-toggle="dropdown">
+                    <img src="https://ui-avatars.com/api/?name={{ current_user.username if current_user.is_authenticated else 'Admin' }}&background=6B46C1&color=fff&size=36" 
+                         class="rounded-circle me-2" width="36" height="36">
+                    <div>
+                        <div class="fw-bold small">{{ current_user.username if current_user.is_authenticated else 'Admin' }}</div>
+                        <small class="text-muted">Administrator</small>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2">
+                    <li><a class="dropdown-item fw-bold" href="/logout"><i class="fas fa-sign-out-alt me-3 text-purple-primary"></i>Sign Out</a></li>
                 </ul>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <!-- Main Content -->
-    <main class="container-fluid px-4 py-4">
-        <!-- Hero - CLEAN (NO LIVE BADGE) -->
-        <div class="hero-section mb-5">
-            <h1 class="text-dark mb-2">Admin Dashboard</h1>
-            <p class="text-muted mb-0">Enterprise-wide Risk Sentinel overview</p>
-        </div>
+    <!-- 🔥 MAIN CONTENT -->
+    <main class="pt-5 mt-4 px-4 px-lg-5 pb-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show rounded-3 shadow-sm mb-4 glass-card" role="alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <!-- KPI Cards - PERFECTLY CENTERED ICONS -->
-        <div class="row g-3 mb-5">
-            <div class="col-xl-3 col-lg-6 col-md-6">
-                <div class="card stat-card">
-                    <div class="stat-icon bg-primary text-white">
-                        <i class="fas fa-users"></i>
+        <!-- 🔥 STATS CARDS -->
+        <div class="row g-4 mb-5">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <div class="glass-card p-4 h-100 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-project-diagram fs-1 text-purple-primary"></i>
                     </div>
-                    <h3 class="stat-number text-primary">8</h3>
-                    <p class="stat-label">Total Users</p>
-                    <small class="text-success fw-medium"><i class="fas fa-arrow-up me-1"></i>+2 this week</small>
+                    <h2 class="mb-1 fw-bold">{{ projects|length|default(3) }}</h2>
+                    <small class="text-muted d-block mb-3">Total Projects</small>
+                    <div class="row text-center">
+                        <div class="col-4"><small class="text-success fw-bold">Active<br>{{ active_projects|default(1) }}</small></div>
+                        <div class="col-4"><small class="text-warning fw-bold">Hold<br>{{ hold_projects|default(1) }}</small></div>
+                        <div class="col-4"><small class="text-primary fw-bold">Complete<br>{{ complete_projects|default(0) }}</small></div>
+                    </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6">
-                <div class="card stat-card">
-                    <div class="stat-icon bg-success text-white">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <h3 class="stat-number text-success">2</h3>
-                    <p class="stat-label">Enterprises</p>
-                    <small class="text-success fw-medium"><i class="fas fa-arrow-up me-1"></i>1 active</small>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6">
-                <div class="card stat-card">
-                    <div class="stat-icon bg-warning text-white">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <h3 class="stat-number text-warning">3</h3>
-                    <p class="stat-label">Open Risks</p>
-                    <small class="text-danger fw-medium"><i class="fas fa-circle me-1"></i>2 Amber</small>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6">
-                <div class="card stat-card">
-                    <div class="stat-icon bg-danger text-white">
-                        <i class="fas fa-tasks"></i>
-                    </div>
-                    <h3 class="stat-number text-danger">4</h3>
-                    <p class="stat-label">Pending Tasks</p>
-                    <small class="text-warning fw-medium"><i class="fas fa-clock me-1"></i>1 overdue</small>
-                </div>
-            </div>
-        </div>
 
-        <!-- Charts Row -->
-        <div class="row g-3 mb-5">
-            <div class="col-lg-6">
-                <div class="card chart-card h-100">
-                    <div class="card-body p-4">
-                        <h6 class="card-title mb-4 fw-semibold text-dark">
-                            <i class="fas fa-chart-pie me-2 text-purple"></i>Risk Distribution
-                        </h6>
-                        <div class="chart-container">
-                            <canvas id="riskChart"></canvas>
-                        </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <div class="glass-card p-4 h-100 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-users fs-1 text-purple-primary"></i>
+                    </div>
+                    <h2 class="mb-1 fw-bold">{{ active_users|default(7) }}</h2>
+                    <small class="text-muted d-block mb-3">Team Members</small>
+                    <div class="row text-center">
+                        <div class="col-6"><small class="text-success fw-bold">PMs<br>{{ pm_count|default(2) }}</small></div>
+                        <div class="col-6"><small class="fw-bold">Total<br>{{ total_users|default(7) }}</small></div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card chart-card h-100">
-                    <div class="card-body p-4">
-                        <h6 class="card-title mb-4 fw-semibold text-dark">
-                            <i class="fas fa-chart-line me-2 text-success"></i>Active Users
-                        </h6>
-                        <div class="chart-container">
-                            <canvas id="userChart"></canvas>
-                        </div>
+
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <div class="glass-card p-4 h-100 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle fs-1 text-danger"></i>
+                    </div>
+                    <h2 class="mb-1 fw-bold text-danger">{{ high_risk_count|default(2) }}</h2>
+                    <small class="text-muted d-block mb-3">High Risks</small>
+                    <div class="progress rounded-pill mb-2" style="height: 10px;">
+                        <div class="progress-bar bg-danger rounded-pill" style="width: {{ risk_percentage|default(33) }}%"></div>
+                    </div>
+                    <small class="text-danger fw-bold">{{ risk_percentage|default(33) }}%</small>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                <div class="glass-card p-4 h-100 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-rupee-sign fs-1 text-success"></i>
+                    </div>
+                    <h2 class="mb-1 fw-bold text-success">₹{{ (total_budget_spent|default(40000)/1000)|round(0)|int }}K</h2>
+                    <small class="text-muted d-block mb-3">Budget Spent</small>
+                    <div class="row text-center">
+                        <div class="col-6"><small class="text-success fw-bold">{{ budget_percentage|round(0)|default(16) }}%</small></div>
+                        <div class="col-6"><small class="fw-bold">of ₹{{ (total_budget_total|default(245000)/1000)|round(0)|int }}K</small></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Actions + Activity -->
-        <div class="row g-3">
-            <div class="col-lg-4">
-                <div class="card chart-card h-100">
-                    <div class="card-body p-4">
-                        <h6 class="card-title mb-4 fw-semibold text-dark">Quick Actions</h6>
-                        <a href="/admin/users" class="btn btn-outline-primary w-100 mb-3 py-2 fs-6">
-                            <i class="fas fa-user-plus me-2"></i>Add User
-                        </a>
-                        <a href="/admin/enterprises" class="btn btn-outline-success w-100 mb-3 py-2 fs-6">
-                            <i class="fas fa-building me-2"></i>New Enterprise
-                        </a>
-                        <a href="/admin/reports" class="btn btn-outline-purple w-100 py-2 fs-6">
-                            <i class="fas fa-download me-2"></i>Export All
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <!-- 🔥 CHARTS SECTION -->
+        <div class="row g-4 mb-5">
             <div class="col-lg-8">
-                <div class="card activity-card h-100">
-                    <div class="card-header bg-white border-0 pb-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0 fw-semibold text-dark">Recent Activity</h6>
-                            <a href="/admin/reports" class="btn btn-sm btn-outline-purple px-4 py-2">View All</a>
-                        </div>
+                <div class="glass-card p-5 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0 fw-bold text-purple-primary">
+                            <i class="fas fa-chart-pie me-2"></i>Projects Status Distribution
+                        </h5>
+                        <span class="status-badge status-active">Live Data</span>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="fw-semibold py-3 px-4">User</th>
-                                        <th class="fw-semibold py-3 px-4">Action</th>
-                                        <th class="fw-semibold py-3 px-4 text-end">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fs-6">pmjohn</span></td>
-                                        <td>Created project "ramzan"</td>
-                                        <td class="text-end text-muted fw-medium">2h ago</td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-6">analyst123</span></td>
-                                        <td>Updated risk "API Key Exposed"</td>
-                                        <td class="text-end text-muted fw-medium">5h ago</td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill fs-6">srdev_alex</span></td>
-                                        <td>Task assigned: "Fix API Key"</td>
-                                        <td class="text-end text-muted fw-medium">1d ago</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="chart-container">
+                        <canvas id="projectsChart"></canvas>
                     </div>
                 </div>
             </div>
+            <div class="col-lg-4">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="mb-4 fw-bold text-purple-primary">
+                        <i class="fas fa-history me-2"></i>Recent Activity
+                    </h5>
+                    <div class="list-group list-group-flush">
+                        {% for activity in recent_activities[-5:] %}
+                        <div class="list-group-item px-0 border-0 py-3">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-purple-primary bg-opacity-20 rounded-circle p-2 me-3">
+                                    <i class="fas fa-circle fs-6 text-purple-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <small class="fw-bold text-purple-primary">{{ activity.action if activity else 'Activity logged' }}</small>
+                                    <div class="small text-muted">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Just now' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-inbox fs-1 opacity-50 mb-3"></i>
+                            <small>No recent activities</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔥 ACTION BUTTONS -->
+        <div class="text-center">
+            <button class="btn btn-purple btn-lg px-5 me-3" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+                <i class="fas fa-plus me-2"></i>Create Project
+            </button>
+            <button class="btn btn-outline-purple btn-lg px-5">
+                <i class="fas fa-file-export me-2"></i>Export Report
+            </button>
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 🔥 CREATE PROJECT MODAL -->
+    <div class="modal fade" id="createProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-purple-primary">
+                        <i class="fas fa-plus-circle me-2"></i>New Project
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/admin/create_project" method="POST">
+                    <div class="modal-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Project Name</label>
+                                <input type="text" name="name" class="form-control rounded-3 glass-card p-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Project Manager</label>
+                                <select name="pm_user_id" class="form-select rounded-3 glass-card p-3" required>
+                                    {% for user in pm_users %}
+                                    <option value="{{ user.id }}">{{ user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Budget (₹)</label>
+                                <input type="number" name="budget_total" class="form-control rounded-3 glass-card p-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Status</label>
+                                <select name="status" class="form-select rounded-3 glass-card p-3">
+                                    <option value="Planning">Planning</option>
+                                    <option value="Active">Active</option>
+                                    <option value="OnHold">On Hold</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 px-4 pb-4">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-purple px-5">Create Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Charts (unchanged - working perfectly)
-        const riskCtx = document.getElementById('riskChart').getContext('2d');
-        new Chart(riskCtx, {
-            type: 'doughnut',
-            data: { labels: ['Cybersecurity', 'Vendor Risk', 'Technical Debt'], datasets: [{ data: [1,1,1], backgroundColor: ['#f87171','#10b981','#f59e0b'], borderWidth: 0, cutout: '70%' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 25, usePointStyle: true } } } }
+        // 🔥 PERFECT SIDEBAR TOGGLE
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // 🔥 ULTRA-FAST CHART
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('projectsChart');
+            if (ctx) {
+                new Chart(ctx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Active ({{ active_projects|default(1) }})', 'On Hold ({{ hold_projects|default(1) }})', 'Complete ({{ complete_projects|default(0) }})'],
+                        datasets: [{
+                            data: [{{ active_projects|default(1) }}, {{ hold_projects|default(1) }}, {{ complete_projects|default(0) }}],
+                            backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
+                            borderWidth: 0,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { padding: 20, usePointStyle: true }
+                            }
+                        }
+                    }
+                });
+            }
         });
 
-        const userCtx = document.getElementById('userChart').getContext('2d');
-        new Chart(userCtx, {
-            type: 'line',
-            data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label: 'Active Users', data: [5,7,6,8,4,6,8], borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.1)', tension: 0.4, fill: true }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-        });
-
-        document.querySelectorAll('.nav-link').forEach(link => {
-            if (link.href === window.location.href) link.classList.add('active');
+        // 🔥 CLOSE SIDEBAR ON LINK CLICK (MOBILE)
+        document.querySelectorAll('.sidebar-nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) {
+                    toggleSidebar();
+                }
+            });
         });
     </script>
 </body>

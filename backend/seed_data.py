@@ -3,54 +3,58 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app, db
 from backend.models import User, Enterprise, Vendor, Project, Risk, Task
 from datetime import datetime
+from werkzeug.security import generate_password_hash
 
-print("🔄 Seeding data (keeping existing tables)...")
+print("🔄 Seeding data (MATCHING YOUR EXISTING SCHEMA)...")
 
 with app.app_context():
-    # DON'T drop_all() - causes circular dependency
-    
-    # 1. PM JOHN
-    pmjohn = User.query.filter_by(username='pmjohn').first()
+    # 1. PM JOHN (MATCHES YOUR DB: id=2, password field)
+    pmjohn = User.query.filter_by(username='pm_john').first()
     if not pmjohn:
-        pmjohn = User(username='pmjohn', email='pmjohn@test.com', password='pass12345', role='PM')
+        pmjohn = User(
+            username='pm_john',
+            email='pmjohn@remshatech.com',
+            password='pass123',  # ← MATCHES YOUR DB 'password' field
+            role='PM',
+            enterprise_id=1,
+            is_active=1
+        )
         db.session.add(pmjohn)
         db.session.commit()
-        print("✅ Created PM John")
+        print("✅ Created/Updated PM John")
     
-    # 2. ENTERPRISE
-    enterprise = Enterprise.query.filter_by(name='TechCorp Inc.').first()
-    if not enterprise:
-        enterprise = Enterprise(name='TechCorp Inc.')
-        db.session.add(enterprise)
+    # 2. ADMIN (MATCHES YOUR DB: id=1)
+    admin = User.query.filter_by(username='admin123').first()
+    if not admin:
+        admin = User(
+            username='admin123',
+            email='admin@remshatech.com',
+            password='pass123',
+            role='Admin',
+            enterprise_id=1,
+            is_active=1
+        )
+        db.session.add(admin)
         db.session.commit()
-        print("✅ Created Enterprise")
+        print("✅ Created Admin")
     
-    # 3. PROJECTS
-    project_count = Project.query.count()
-    if project_count == 0:
-        projects = [
-            Project(name='Alpha Sprint', enterprise_id=enterprise.enterprise_id),
-            Project(name='Beta Release', enterprise_id=enterprise.enterprise_id),
-            Project(name='Gamma MVP', enterprise_id=enterprise.enterprise_id)
-        ]
-        for project in projects:
-            db.session.add(project)
+    # 3. ANALYST (MATCHES YOUR DB: id=4)
+    analyst = User.query.filter_by(username='risk_analyst').first()
+    if not analyst:
+        analyst = User(
+            username='risk_analyst',
+            email='analyst@remshatech.com', 
+            password='pass123',
+            role='Analyst',
+            enterprise_id=1,
+            is_active=1
+        )
+        db.session.add(analyst)
         db.session.commit()
-        print("✅ Created 3 Projects")
-    
-    # 4. RISKS (only if none exist)
-    risk_count = Risk.query.count()
-    if risk_count == 0:
-        risks = [
-            Risk(title='Server Overload', risk_score=4.5, status='Open'),
-            Risk(title='Database Timeout', risk_score=3.8, status='Open'),
-            Risk(title='Vendor Delay', risk_score=2.9, status='Open')
-        ]
-        for risk in risks:
-            db.session.add(risk)
-        db.session.commit()
-        print("✅ Created 3 Risks")
+        print("✅ Created Analyst")
     
     print("🎉 SEEDING COMPLETE!")
-    print("👤 LOGIN: pmjohn / pass12345")
-    print("🌐 http://localhost:5000/enterprise-login")
+    print("👤 LOGIN CREDENTIALS:")
+    print("   PM: pm_john / pass123 → http://localhost:5000/enterprise-login")
+    print("   Admin: admin123 / pass123")
+    print("   Analyst: risk_analyst / pass123")

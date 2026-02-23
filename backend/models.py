@@ -1,19 +1,42 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 from datetime import datetime
 
+# 🔥 CREATE DB INSTANCE FIRST
 db = SQLAlchemy()
 
 # ========== USERS ==========
-class User(db.Model):
+# ========== USERS (MATCH YOUR REAL DB) ==========
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
-    user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(50), nullable=False, unique=True)
-    role = db.Column(db.Enum('Admin','PM','Analyst','TL','SeniorDev','JuniorDev'), nullable=False)
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(50), nullable=False)  # ← String, not Enum
+    email = db.Column(db.String(100), nullable=False, unique=True)
+    password = db.Column(db.String(255), nullable=False)  # ← Plain text
+    enterprise_id = db.Column(db.Integer)
+    is_active = db.Column(db.Integer, default=1)  # ← INTEGER 1/0
+    projects_assigned = db.Column(db.Text)
+    activity_log = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# ========== VENDORS (MATCH YOUR REAL DB) ==========
+class Vendor(db.Model):
+    __tablename__ = 'vendors'
+    id = db.Column(db.Integer, primary_key=True)  # ← CHANGED from vendor_id
+    company_name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
-    enterprise_id = db.Column(db.Integer, db.ForeignKey('enterprises.enterprise_id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # ✅ NO relationships - prevents ambiguous foreign keys
+    generated_by_admin_id = db.Column(db.Integer)
+    assigned_project_id = db.Column(db.Integer)
+    delivery_assets = db.Column(db.Text)
+    delivery_timeline = db.Column(db.Date)
+    quality_status = db.Column(db.String(50))
+    completion_percent = db.Column(db.Integer)
+    risk_score = db.Column(db.Float, default=0.00)
+    status = db.Column(db.String(20), default='Active')  # ← CHANGED from Enum
+    created_at = db.Column(db.DateTime)
 
 # ========== ENTERPRISES ==========
 class Enterprise(db.Model):
@@ -22,18 +45,7 @@ class Enterprise(db.Model):
     name = db.Column(db.String(100), nullable=False)
     pm_user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), unique=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # ✅ NO backref relationships
-
-# ========== VENDORS ==========
-class Vendor(db.Model):
-    __tablename__ = 'vendors'
-    vendor_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    company_name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), nullable=False, unique=True)
-    password = db.Column(db.String(255), nullable=False)
-    risk_score = db.Column(db.Float, default=0.00)
-    status = db.Column(db.Enum('Active','Inactive'), default='Active')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
 
 # ========== PROJECTS ==========
 class Project(db.Model):
@@ -53,7 +65,7 @@ class Project(db.Model):
     end_date = db.Column(db.Date)
     stakeholder_list = db.Column(db.Text)
 
-# ========== PROJECT HEALTH ==========
+# ========== ALL OTHER MODELS (unchanged) ==========
 class ProjectHealth(db.Model):
     __tablename__ = 'project_health'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -61,7 +73,6 @@ class ProjectHealth(db.Model):
     health_score = db.Column(db.Enum('Red','Yellow','Green'))
     calculated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ========== RISK TYPES ==========
 class RiskType(db.Model):
     __tablename__ = 'risk_types'
     type_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -69,7 +80,6 @@ class RiskType(db.Model):
     category = db.Column(db.Enum('Technical','Non-Tech','External'), nullable=False)
     description = db.Column(db.Text)
 
-# ========== RISKS ==========
 class Risk(db.Model):
     __tablename__ = 'risks'
     risk_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -99,7 +109,6 @@ class Risk(db.Model):
     comments = db.Column(db.Text)
     milestone_delay_days = db.Column(db.Integer, default=0)
 
-# ========== TASKS ==========
 class Task(db.Model):
     __tablename__ = 'tasks'
     task_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -115,7 +124,6 @@ class Task(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ========== MILESTONES ==========
 class Milestone(db.Model):
     __tablename__ = 'milestones'
     milestone_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -125,7 +133,6 @@ class Milestone(db.Model):
     status = db.Column(db.Enum('Pending','InProgress','Completed','Delayed'), default='Pending')
     completed_date = db.Column(db.Date)
 
-# ========== CHAT ==========
 class ChatRoom(db.Model):
     __tablename__ = 'chat_rooms'
     room_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
