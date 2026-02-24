@@ -223,10 +223,10 @@
             </div>
             <div class="dropdown">
                 <a href="#" class="d-flex align-items-center text-decoration-none p-2 rounded-pill glass-card" data-bs-toggle="dropdown">
-                    <img src="https://ui-avatars.com/api/?name={{ current_user.username if current_user.is_authenticated else 'Admin' }}&background=6B46C1&color=fff&size=36" 
+                    <img src="https://ui-avatars.com/api/?name={{ session.username|default('Admin') }}&background=6B46C1&color=fff&size=36" 
                          class="rounded-circle me-2" width="36" height="36">
                     <div>
-                        <div class="fw-bold small">{{ current_user.username if current_user.is_authenticated else 'Admin' }}</div>
+                        <div class="fw-bold small">{{ session.username|default('admin123') }}</div>
                         <small class="text-muted">Administrator</small>
                     </div>
                 </a>
@@ -251,7 +251,7 @@
             {% endif %}
         {% endwith %}
 
-        <!-- 🔥 STATS CARDS -->
+        <!-- 🔥 STATS CARDS - READY FOR YOUR REAL DB DATA -->
         <div class="row g-4 mb-5">
             <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
                 <div class="glass-card p-4 h-100 text-center">
@@ -263,7 +263,7 @@
                     <div class="row text-center">
                         <div class="col-4"><small class="text-success fw-bold">Active<br>{{ active_projects|default(1) }}</small></div>
                         <div class="col-4"><small class="text-warning fw-bold">Hold<br>{{ hold_projects|default(1) }}</small></div>
-                        <div class="col-4"><small class="text-primary fw-bold">Complete<br>{{ complete_projects|default(0) }}</small></div>
+                        <div class="col-4"><small class="text-primary fw-bold">Planning<br>{{ planning_projects|default(1) }}</small></div>
                     </div>
                 </div>
             </div>
@@ -287,8 +287,8 @@
                     <div class="mb-4">
                         <i class="fas fa-exclamation-triangle fs-1 text-danger"></i>
                     </div>
-                    <h2 class="mb-1 fw-bold text-danger">{{ high_risk_count|default(2) }}</h2>
-                    <small class="text-muted d-block mb-3">High Risks</small>
+                    <h2 class="mb-1 fw-bold text-danger">{{ high_risk_projects|default(1) }}</h2>
+                    <small class="text-muted d-block mb-3">High Risk Projects</small>
                     <div class="progress rounded-pill mb-2" style="height: 10px;">
                         <div class="progress-bar bg-danger rounded-pill" style="width: {{ risk_percentage|default(33) }}%"></div>
                     </div>
@@ -301,11 +301,11 @@
                     <div class="mb-4">
                         <i class="fas fa-rupee-sign fs-1 text-success"></i>
                     </div>
-                    <h2 class="mb-1 fw-bold text-success">₹{{ (total_budget_spent|default(40000)/1000)|round(0)|int }}K</h2>
+                    <h2 class="mb-1 fw-bold text-success">₹{{ total_budget_spent|default(40000)|round(0)|int }}</h2>
                     <small class="text-muted d-block mb-3">Budget Spent</small>
                     <div class="row text-center">
-                        <div class="col-6"><small class="text-success fw-bold">{{ budget_percentage|round(0)|default(16) }}%</small></div>
-                        <div class="col-6"><small class="fw-bold">of ₹{{ (total_budget_total|default(245000)/1000)|round(0)|int }}K</small></div>
+                        <div class="col-6"><small class="text-success fw-bold">{{ budget_percentage|default(16) }}%</small></div>
+                        <div class="col-6"><small class="fw-bold">of ₹{{ total_budget_total|default(245000)|round(0)|int }}</small></div>
                     </div>
                 </div>
             </div>
@@ -339,8 +339,8 @@
                                     <i class="fas fa-circle fs-6 text-purple-primary"></i>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <small class="fw-bold text-purple-primary">{{ activity.action if activity else 'Activity logged' }}</small>
-                                    <div class="small text-muted">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Just now' }}</div>
+                                    <small class="fw-bold text-purple-primary">{{ activity.action }}</small>
+                                    <div class="small text-muted">{{ activity.created_at.strftime('%b %d, %H:%M') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -424,16 +424,16 @@
             overlay.classList.toggle('active');
         }
 
-        // 🔥 ULTRA-FAST CHART
+        // 🔥 ULTRA-FAST CHART WITH REAL DATA
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('projectsChart');
             if (ctx) {
                 new Chart(ctx.getContext('2d'), {
                     type: 'doughnut',
                     data: {
-                        labels: ['Active ({{ active_projects|default(1) }})', 'On Hold ({{ hold_projects|default(1) }})', 'Complete ({{ complete_projects|default(0) }})'],
+                        labels: ['Active ({{ active_projects|default(1) }})', 'On Hold ({{ hold_projects|default(1) }})', 'Planning ({{ planning_projects|default(1) }})'],
                         datasets: [{
-                            data: [{{ active_projects|default(1) }}, {{ hold_projects|default(1) }}, {{ complete_projects|default(0) }}],
+                            data: [{{ active_projects|default(1) }}, {{ hold_projects|default(1) }}, {{ planning_projects|default(1) }}],
                             backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
                             borderWidth: 0,
                             borderRadius: 8

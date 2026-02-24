@@ -1,126 +1,208 @@
+# app.py (replace your current app.py with this file)
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 from functools import wraps
 import mysql.connector
 import os
 from dotenv import load_dotenv
 
+# load environment (optional .env.local)
 load_dotenv('.env.local')
 
 app = Flask(__name__)
-app.secret_key = 'risk-sentinel-2026-production-ready'
+app.secret_key = os.getenv('FLASK_SECRET', 'risk-sentinel-2026-production-ready')
 
-# 🔥 DATABASE
+# --------------------------
+# DATABASE helper
+# --------------------------
 def get_cursor():
+    """Return (cursor, conn) or (None, None) on failure."""
     try:
         conn = mysql.connector.connect(
-            host='localhost', user='root', password='admin',
-            database='risk_sentinel', autocommit=True
+            host=os.getenv('DB_HOST', 'localhost'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASS', 'admin'),
+            database=os.getenv('DB_NAME', 'risk_sentinel'),
+            autocommit=True
         )
-        return conn.cursor(dictionary=True), conn
-    except:
+        cursor = conn.cursor(dictionary=True)
+        return cursor, conn
+    except Exception as e:
+        app.logger.error("DB connection failed: %s", e)
         return None, None
 
-# 🔥 current_user FOR TEMPLATES
+# --------------------------
+# Template helper - current_user
+# --------------------------
 @app.context_processor
 def inject_user():
     if 'user_id' in session:
-        return dict(current_user=type('User', (), {
+        user_obj = type('User', (), {
             'is_authenticated': True,
             'username': session.get('username', 'Admin'),
             'role': session.get('role', 'Admin')
-        })())
-    return dict(current_user=type('User', (), {
-        'is_authenticated': False,
-        'username': 'Guest',
-        'role': 'Guest'
-    })())
+        })()
+        return dict(current_user=user_obj)
+    guest = type('User', (), {'is_authenticated': False, 'username': 'Guest', 'role': 'Guest'})()
+    return dict(current_user=guest)
 
-# 🔥 COMPLETE DASHBOARD DATA - ALL VARIABLES DEFINED
+# --------------------------
+# Dashboard data builder
+# --------------------------
 def get_complete_dashboard_data(enterprise_id):
+    """
+    Gather dashboard aggregates for an enterprise.
+    Uses joins so we filter by projects.enterprise_id (safer given your DB).
+    """
     cursor, conn = get_cursor()
     data = {
-        # CORE STATS
         'total_risks': 0,
         'active_projects': 0,
         'total_vendors': 0,
         'high_risks': 0,
-        'severity_stats': {'Medium': 2, 'High': 0, 'Low': 0},
-        
-        # REQUIRED BY TEMPLATES
+        'severity_stats': {'Medium': 0, 'High': 0, 'Low': 0},
         'recent_risks': [],
-        'recent_activities': [],  # THIS WAS MISSING!
-        'budget_percentage': 17,
-        'budget_total': 245000,
-        'budget_spent': 42500,
-        'risk_percentage': 25,
-        'total_tasks': 45,
-        'avg_completion': 12,
+        'recent_activities': [],
+        'budget_percentage': 0,
+        'budget_total': 0,
+        'budget_spent': 0,
+        'risk_percentage': 0,
+        'total_tasks': 0,
+        'avg_completion': 0,
         'high_risk_count': 0,
-        'hold_projects': 1,
+        'hold_projects': 0,
         'complete_projects': 0
     }
-    
-    if cursor:
-        try:
-            # RISKS
-            cursor.execute("SELECT COUNT(*) as count FROM risks WHERE enterprise_id = %s", (enterprise_id,))
-            data['total_risks'] = cursor.fetchone()['count'] or 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM projects WHERE enterprise_id = %s AND status IN ('Active', 'Planning')", (enterprise_id,))
-            data['active_projects'] = cursor.fetchone()['count'] or 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM vendors WHERE generated_by_admin_id = %s", (session['user_id'],))
-            data['total_vendors'] = cursor.fetchone()['count'] or 0
-            
-            cursor.execute("SELECT severity, COUNT(*) as count FROM risks WHERE enterprise_id = %s GROUP BY severity", (enterprise_id,))
-            severity_data = cursor.fetchall()
-            if severity_data:
-                data['severity_stats'] = dict(severity_data)
+
+    if not cursor:
+        return data
+
+    try:
+        # total risks (join projects -> risks)
+        cursor.execute("""
+            SELECT COUNT(r.id) AS count
+            FROM risks r
+            JOIN projects p ON r.project_id = p.id
+            WHERE p.enterprise_id = %s
+        """, (enterprise_id,))
+        row = cursor.fetchone()
+        data['total_risks'] = (row and row.get('count')) or 0
+
+        # active projects
+        cursor.execute("""
+            SELECT COUNT(*) AS count
+            FROM projects
+            WHERE enterprise_id = %s AND status IN ('Active', 'Planning')
+        """, (enterprise_id,))
+        data['active_projects'] = (cursor.fetchone() or {}).get('count', 0) or 0
+
+        # total vendors generated by enterprise admins (best-effort: use enterprise id on projects)
+        cursor.execute("""
+            SELECT COUNT(*) AS count
+            FROM vendors v
+            WHERE v.assigned_project_id IN (SELECT id FROM projects WHERE enterprise_id = %s)
+        """, (enterprise_id,))
+        data['total_vendors'] = (cursor.fetchone() or {}).get('count', 0) or 0
+
+        # severity stats (grouped)
+        cursor.execute("""
+            SELECT r.severity, COUNT(*) as count
+            FROM risks r
+            JOIN projects p ON r.project_id = p.id
+            WHERE p.enterprise_id = %s
+            GROUP BY r.severity
+        """, (enterprise_id,))
+        severity_data = cursor.fetchall() or []
+        if severity_data:
+            # convert list of dicts to mapping name->count
+            data['severity_stats'] = {row['severity']: row['count'] for row in severity_data}
             data['high_risks'] = data['severity_stats'].get('High', 0)
-            
-            # RECENT RISKS
-            cursor.execute("""
-                SELECT r.title, r.severity, r.status, COALESCE(p.name, 'No Project') as project_name
-                FROM risks r LEFT JOIN projects p ON r.project_id = p.id
-                WHERE r.enterprise_id = %s ORDER BY r.created_at DESC LIMIT 5
-            """, (enterprise_id,))
-            data['recent_risks'] = cursor.fetchall() or []
-            
-            # RECENT ACTIVITIES (YOUR MISSING VARIABLE!)
-            cursor.execute("""
-                SELECT a.action, a.details, a.created_at, u.username
-                FROM activities a LEFT JOIN users u ON a.user_id = u.id
-                WHERE a.project_id IN (SELECT id FROM projects WHERE enterprise_id = %s)
-                ORDER BY a.created_at DESC LIMIT 5
-            """, (enterprise_id,))
-            data['recent_activities'] = cursor.fetchall() or [
-                {'action': 'Project Updated', 'details': 'API Gateway status changed', 'created_at': '2026-02-23', 'username': 'admin123'},
-                {'action': 'Risk Analyzed', 'details': 'New vulnerability detected', 'created_at': '2026-02-23', 'username': 'analyst'}
-            ]
-            
-        except:
-            pass
-        finally:
+
+        # recent risks
+        cursor.execute("""
+            SELECT r.id, r.title, r.severity, r.status, COALESCE(p.name, 'No Project') as project_name, r.created_at
+            FROM risks r
+            LEFT JOIN projects p ON r.project_id = p.id
+            WHERE p.enterprise_id = %s
+            ORDER BY r.created_at DESC
+            LIMIT 5
+        """, (enterprise_id,))
+        data['recent_risks'] = cursor.fetchall() or []
+
+        # recent activities (project-scoped)
+        cursor.execute("""
+            SELECT a.action, a.details, a.created_at, u.username
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE a.project_id IN (SELECT id FROM projects WHERE enterprise_id = %s)
+            ORDER BY a.created_at DESC
+            LIMIT 5
+        """, (enterprise_id,))
+        data['recent_activities'] = cursor.fetchall() or []
+
+        # budgets: quick aggregate
+        cursor.execute("""
+            SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(spent),0) as spent
+            FROM budgets WHERE project_id IN (SELECT id FROM projects WHERE enterprise_id = %s)
+        """, (enterprise_id,))
+        b = cursor.fetchone() or {}
+        data['budget_total'] = float(b.get('total') or 0)
+        data['budget_spent'] = float(b.get('spent') or 0)
+        data['budget_percentage'] = int((data['budget_spent'] / data['budget_total'] * 100) if data['budget_total'] > 0 else 0)
+
+        # simple project counts
+        cursor.execute("SELECT COUNT(*) as count FROM projects WHERE enterprise_id = %s AND status = 'OnHold'", (enterprise_id,))
+        data['hold_projects'] = (cursor.fetchone() or {}).get('count', 0) or 0
+        cursor.execute("SELECT COUNT(*) as count FROM projects WHERE enterprise_id = %s AND status = 'Complete'", (enterprise_id,))
+        data['complete_projects'] = (cursor.fetchone() or {}).get('count', 0) or 0
+
+        # tasks count
+        cursor.execute("SELECT COUNT(*) as count FROM tasks WHERE project_id IN (SELECT id FROM projects WHERE enterprise_id = %s)", (enterprise_id,))
+        data['total_tasks'] = (cursor.fetchone() or {}).get('count', 0) or 0
+
+    except Exception as e:
+        app.logger.error("Error fetching dashboard data: %s", e)
+    finally:
+        try:
             cursor.close()
             conn.close()
-    
+        except Exception:
+            pass
+
     return data
 
-# 🔥 LOGIN REQUIRED
-def login_required(role=None):
+# --------------------------
+# Improved login_required decorator
+# --------------------------
+def login_required(roles=None):
+    """
+    roles: None (any authenticated) | string | list/tuple of strings
+    Role matching is case-insensitive.
+    """
+    if isinstance(roles, str):
+        allowed = [roles.lower()]
+    elif isinstance(roles, (list, tuple, set)):
+        allowed = [r.lower() for r in roles]
+    else:
+        allowed = None  # any authenticated
+
     def decorator(f):
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated(*args, **kwargs):
             if 'user_id' not in session:
+                flash('Please login first.', 'error')
                 return redirect('/enterprise-login')
-            if role and session.get('role') != role:
-                flash('Admin access required!', 'error')
-                return redirect('/enterprise-login')
+            if allowed is not None:
+                user_role = (session.get('role') or '').lower()
+                if user_role not in allowed:
+                    flash('Access denied.', 'error')
+                    return redirect('/enterprise-login')
             return f(*args, **kwargs)
-        return decorated_function
+        return decorated
     return decorator
 
-# 🔥 ALL ROUTES
+# --------------------------
+# ROUTES
+# --------------------------
 @app.route('/')
 def landing():
     return render_template('landing.html')
@@ -128,36 +210,49 @@ def landing():
 @app.route('/enterprise-login', methods=['GET', 'POST'])
 def enterprise_login():
     if request.method == 'POST':
-        email = request.form.get('email').lower().strip()
+        email = (request.form.get('email') or '').strip().lower()
         password = request.form.get('password')
-        
         cursor, conn = get_cursor()
+        user = None
         if cursor:
-            cursor.execute("SELECT id, username, role, enterprise_id, is_active FROM users WHERE LOWER(email) = %s AND password = %s", (email, password))
+            cursor.execute("SELECT id, username, role, enterprise_id, is_active, email FROM users WHERE LOWER(email) = %s AND password = %s", (email, password))
             user = cursor.fetchone()
-            if user and user['is_active'] == 1:
-                session['user_id'] = user['id']
-                session['username'] = user['username']
-                session['role'] = user['role']
-                session['enterprise_id'] = user['enterprise_id']
-                flash(f'Welcome {user["username"]}!', 'success')
-                
-                if user['role'] == 'Admin':
-                    return redirect('/admin/dashboard')
-                elif user['role'] == 'PM':
-                    return redirect('/pm/dashboard')
-            flash('Invalid credentials', 'error')
-    
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+
+        if user and int(user.get('is_active', 0)) == 1:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['role'] = user['role']  # keep DB role string; decorator uses lowercase compare
+            session['enterprise_id'] = user.get('enterprise_id')
+            flash(f"Welcome {user['username']}!", 'success')
+
+            # role -> dashboard mapping (safe defaults)
+            role_map = {
+                'admin': '/admin/dashboard',
+                'pm': '/pm/dashboard',
+                'analyst': '/analyst/dashboard',
+                'tl': '/tl/dashboard',
+                'seniordev': '/senior/dashboard',
+                'juniordev': '/junior/dashboard',
+                'vendor': '/vendor/dashboard'
+            }
+            target = role_map.get((user['role'] or '').lower(), '/')
+            return redirect(target)
+
+        flash('Invalid credentials or inactive account', 'error')
     return render_template('auth/enterprise_login.html')
 
-# 🔥 PERFECT DASHBOARD
+# ADMIN DASHBOARD + ADMIN PAGES
 @app.route('/admin/dashboard')
 @login_required('Admin')
 def admin_dashboard():
-    data = get_complete_dashboard_data(session['enterprise_id'])
+    data = get_complete_dashboard_data(session.get('enterprise_id'))
     return render_template('admin/dashboard.html', **data)
 
-# 🔥 ALL OTHER ADMIN PAGES - FULL DATA
 @app.route('/admin/user_management')
 @login_required('Admin')
 def admin_user_management():
@@ -165,20 +260,29 @@ def admin_user_management():
     users = []
     stats = {'total_users': 0, 'active_users': 0, 'inactive_users': 0, 'pm_count': 0}
     if cursor:
-        cursor.execute("SELECT id, username, email, role, is_active, created_at FROM users ORDER BY created_at DESC")
-        users = cursor.fetchall()
-        
-        cursor.execute("SELECT COUNT(*) as count FROM users"); stats['total_users'] = cursor.fetchone()['count']
-        cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_active = 1"); stats['active_users'] = cursor.fetchone()['count']
-        cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_active = 0"); stats['inactive_users'] = cursor.fetchone()['count']
-        cursor.execute("SELECT COUNT(*) as count FROM users WHERE role = 'PM'"); stats['pm_count'] = cursor.fetchone()['count']
-    
-    return render_template('admin/user_management.html', users=users or [], **stats)
+        try:
+            cursor.execute("SELECT id, username, email, role, is_active, created_at FROM users ORDER BY created_at DESC")
+            users = cursor.fetchall() or []
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            stats['total_users'] = (cursor.fetchone() or {}).get('count', 0) or 0
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_active = 1")
+            stats['active_users'] = (cursor.fetchone() or {}).get('count', 0) or 0
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_active = 0")
+            stats['inactive_users'] = (cursor.fetchone() or {}).get('count', 0) or 0
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE role = 'PM'")
+            stats['pm_count'] = (cursor.fetchone() or {}).get('count', 0) or 0
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+    return render_template('admin/user_management.html', users=users, **stats)
 
 @app.route('/admin/reports')
 @login_required('Admin')
 def admin_reports():
-    data = get_complete_dashboard_data(session['enterprise_id'])
+    data = get_complete_dashboard_data(session.get('enterprise_id'))
     return render_template('admin/reports.html', **data)
 
 @app.route('/admin/projects')
@@ -187,13 +291,19 @@ def admin_projects():
     cursor, conn = get_cursor()
     projects = []
     if cursor:
-        cursor.execute("""
-            SELECT id, name, status, budget_total, budget_spent, team_size, start_date, end_date
-            FROM projects WHERE enterprise_id = %s ORDER BY created_at DESC
-        """, (session['enterprise_id'],))
-        projects = cursor.fetchall()
-    
-    return render_template('admin/projects.html', projects=projects or [])
+        try:
+            cursor.execute("""
+                SELECT id, name, status, budget_total, budget_spent, team_size, start_date, end_date
+                FROM projects WHERE enterprise_id = %s ORDER BY created_at DESC
+            """, (session.get('enterprise_id'),))
+            projects = cursor.fetchall() or []
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+    return render_template('admin/projects.html', projects=projects)
 
 @app.route('/admin/projectdetail/<int:project_id>')
 @login_required('Admin')
@@ -202,19 +312,24 @@ def admin_project_detail(project_id):
     project = {}
     risks = []
     if cursor:
-        cursor.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
-        project = cursor.fetchone() or {}
-        
-        cursor.execute("SELECT * FROM risks WHERE project_id = %s", (project_id,))
-        risks = cursor.fetchall()
-    
+        try:
+            cursor.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+            project = cursor.fetchone() or {}
+            cursor.execute("SELECT * FROM risks WHERE project_id = %s", (project_id,))
+            risks = cursor.fetchall() or []
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
     return render_template('admin/projectdetail.html', project=project, risks=risks)
 
-# 🔥 VENDOR PAGES
+# VENDOR
 @app.route('/vendor-login', methods=['GET', 'POST'])
 def vendor_login():
     if request.method == 'POST':
-        session['vendor_name'] = 'SecureAPI Solutions'
+        session['vendor_name'] = request.form.get('company', 'Vendor')
         return redirect('/vendor/dashboard')
     return render_template('auth/vendor_login.html')
 
@@ -222,14 +337,15 @@ def vendor_login():
 def vendor_dashboard():
     return render_template('vendor/dashboard.html', vendor_name=session.get('vendor_name', 'Vendor'))
 
-# 🔥 SUPPORT PAGES
+# SUPPORT
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     return render_template('auth/forgot_password.html')
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    return render_template('auth/reset_password.html')
+    # token handling logic here
+    return render_template('auth/reset_password.html', token=token)
 
 @app.route('/enterprise-register', methods=['GET', 'POST'])
 def enterprise_register():
@@ -239,6 +355,7 @@ def enterprise_register():
 def vendor_register():
     return render_template('auth/vendor_register.html')
 
+# PM / Analyst dashboards (simple)
 @app.route('/pm/dashboard')
 @login_required('PM')
 def pm_dashboard():
@@ -255,7 +372,6 @@ def logout():
     return redirect('/')
 
 if __name__ == '__main__':
-    print("🚀🔥 RISK SENTINEL - ALL TEMPLATES PERFECT!")
-    print("✅ admin@remshatech.com / pass123")
-    print("✅ http://localhost:5000")
+    print(" RISK SENTINEL - STARTING")
+    print("✅ default test: admin / pass123 (use email admin@remshatech.com if logging by email)")
     app.run(debug=True, port=5000)
